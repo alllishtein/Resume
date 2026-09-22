@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-Data-ye system to PostgreSQL-e. Har table rabete dare (FK), har query filter-e tenant va soft-delete dare, index-haye partial unique baraye code melli + soft-delete sakhtim, va transaction-haye Serializable + `FOR UPDATE` baraye write-haye sensitive darim. EF Core baraye CRUD, Dapper baraye SQL-e dasti (inbox).
+Data-ye system-e Dejban to **PostgreSQL** zendegi mikone — source of truth. Har table rabete dare (FK), aksar-e query-ha filter-e **tenant** (`site_id`) va **soft-delete** (`is_deleted`) daran, index-haye **partial unique** baraye code melli + soft-delete sakhtim, va baraye write-haye sensitive az isolation-e **Serializable** va row lock-e **`FOR UPDATE`** estefade mikonim. EF Core baraye CRUD-e ma'muli, Dapper baraye SQL-e dasti-ye hot path (inbox).
+
+Architecture-esh do sathe: **database-per-microservice** (Identity, ACL, DCC, …) va dakhele Dejban.Api **schema-per-module** (8 schema ru ye instance). Cross-service join/FK nist — integration ba event. In fasl WORLD-e SQL/ACID/index/isolation ra midahad, ba’d hamin mafahim ra ba config-e EF va SQL-e inbox pin mikone.
 
 ---
 
@@ -14,7 +16,7 @@ Data-ye system to PostgreSQL-e. Har table rabete dare (FK), har query filter-e t
 
 ## Relational DB chiye?
 
-Data to table-ha ba rabete-ye tarif-shode (FK). Query ba SQL. Constraint enforce mikone ke data valid bemoone.
+Relational DB yani data to table-ha ba rabete-ye tarif-shode (FK) negah dashte mishe, query ba SQL zade mishe, va constraint-ha enforce mikonan ke data valid bemoone. In model ghovvat-esh consistency va join-e ad-hoc-e; za'f-esh schema-change va scale-out-e sakht. Aksar-e system-ha **polyglot**-an — Postgres baraye truth, Redis baraye cache, MinIO baraye file:
 
 | model | mesal | ghovvat | za'f |
 |---|---|---|---|
@@ -23,9 +25,7 @@ Data to table-ha ba rabete-ye tarif-shode (FK). Query ba SQL. Constraint enforce
 | Key-value | Redis | latency-e kam | query nist |
 | Object store | MinIO/S3 | blob | search nadare |
 
-Aksar-e system-ha polyglot-an: Postgres baraye source of truth, Redis baraye cache, MinIO baraye file.
-
-**Chera Postgres?** Open-source, `jsonb`, partial index, `FOR UPDATE`, `timestamptz`, Docker-e sade. EF Core + Npgsql.
+**Chera Postgres?** Open-source, `jsonb`, partial index, `FOR UPDATE`, `timestamptz`, Docker-e sade, va stack-e ma EF Core + Npgsql.
 
 ## Mafahim-e paye
 
@@ -117,21 +117,19 @@ Unique constraint chand NULL ra to Postgres ejaze mide. Vali `''` empty string y
 
 ## Index
 
-Index = sakhtar-e kenari ke lookup ra O(log n) mikone be jaye O(n) seq scan.
+Index = sakhtar-e kenari ke lookup ra O(log n) mikone be jaye O(n) seq scan. Cost dare: har INSERT/UPDATE index ra update mikone — pas index-e ezafe roye write-heavy table (inbox) momkene slow bashe. Noe-ha-ye asli:
 
 **B-tree (default):** equality + range (`=`, `<`, `>`, `BETWEEN`, `LIKE 'abc%'`). `LIKE '%abc'` B-tree **nist**.
 
 **Unique index:** constraint + lookup.
 
-**Partial index (`WHERE ...):** index faghat roye subset. Koochik-tar, unique-e narm-tar. Talayi baraye soft-delete: unique `national_code WHERE is_deleted = false`.
+**Partial index (`WHERE ...`):** index faghat roye subset. Koochik-tar, unique-e narm-tar. Talayi baraye soft-delete: unique `national_code WHERE is_deleted = false`.
 
 **Composite:** `(site_id, status)` — left-prefix rule: `WHERE site_id = ?` khoob. `WHERE status = ?` bedune site_id **khoob nist**. Selective/equality aval, range dovom.
 
 **GIN:** baraye `jsonb`, full-text, array.
 
 **Covering / index-only:** age SELECT faghat column-haye index ra mikhad, heap nemikhone.
-
-**Cost-e index:** har INSERT/UPDATE index ra update mikone. Index-e ezafe roye write-heavy table (inbox) momkene slow bashe.
 
 ## EXPLAIN ANALYZE
 
@@ -151,6 +149,8 @@ SELECT * FROM visitors WHERE national_code = '0012345678' AND is_deleted = false
 
 ## ACID
 
+ACID chahar zemanat-e transaction-e: age interview beparse «chera outbox ba SaveChanges yekja-st?», javab-esh Atomicity-e.
+
 | | mani |
 |---|---|
 | **Atomicity** | hame ya hich |
@@ -162,7 +162,7 @@ SELECT * FROM visitors WHERE national_code = '0012345678' AND is_deleted = false
 
 ## Isolation level + MVCC
 
-Postgres MVCC: har row version dare. Reader blocker-e writer nist.
+Postgres MVCC: har row version dare — reader blocker-e writer nist. Isolation level mige concurrent transaction-ha cheghadr az ham mibinand. Default Read Committed-e; Serializable geran-tar vali safe-tar (card number generator Dejban azash estefade mikone).
 
 | level | dirty read | non-repeatable | phantom |
 |---|---|---|---|
@@ -173,8 +173,6 @@ Postgres MVCC: har row version dare. Reader blocker-e writer nist.
 - **Non-repeatable:** do SELECT-e yek row, beyneshun UPDATE-e kesi-e dige
 - **Phantom:** do SELECT-e range, row-e jadid zaher mishe
 - **Write skew:** do tx state-e valid mikhanand, ba ham invalid. Serializable abort mikone (`40001`)
-
-Serializable geran-tar-e vali safe-tar. Default Read Committed.
 
 ## Lock
 
@@ -268,9 +266,11 @@ Bloat: index-e random uuid + update ziad → index-e bozorg. `REINDEX CONCURRENT
 
 # BAKHSH-E DOVOM: DEJBAN — SQL to in proje
 
+In bakhsh architecture-ye vaghe'i-e DB-e Dejban ra midahad: chand Postgres joda baraye microservice-ha, va dakhele Dejban ye instance ba chand schema. Jomle-ye mosahebe: «Database-per-service across microservices, schema-per-module inside the modular monolith.»
+
 ## Architecture-ye DB
 
-**Microservices = DB-e joda:**
+**Microservices = DB-e joda.** Beyn-e ina hich FK / join-e cross-DB nist — integration = MassTransit event.
 
 | container | DB |
 |---|---|

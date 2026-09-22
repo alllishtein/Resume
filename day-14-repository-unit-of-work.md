@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-Repository = abstraction baraye **load/save-e entity**. Unit of Work = **yek transaction boundary** baraye chand change. Tu Dejban: repo-ha **specific** hastan (na generic `IRepository<T>`), va `IUnitOfWork` = **hamoon DbContext** (scoped). Handler: `repo.Insert` → `unitOfWork.SaveChangesAsync`. Query-ha ziad az `GetQueryable()` + LINQ to EF estefade mikonan — practical, vali EF leak smell.
+**Repository** abstraction-e baraye load va save-e entity-ha-st: application midone *chi* mikhad (Get, Insert, …), na inke *chejori* EF ya SQL anjam mishe. **Unit of Work** hamoon **transaction boundary**-e — chand change (chand repo) ya hame commit mishan ya hichkodom. Bedune UoW, age yek Insert ok she va digari fail, data half-written mimune.
+
+To Dejban, repo-ha **specific** hastan (masalan `IVisitorRepository`), na generic `IRepository<T>`. `IUnitOfWork` practically **hamoon DbContext**-e scoped-e: handler `repo.Insert` mikone, ba'd `unitOfWork.SaveChangesAsync`. Samt-e query ziad `GetQueryable()` + LINQ to EF midan — ship kardan sade-tar mishe, vali Application be EF leak mikone (smell-e shenakhte).
 
 ---
 
@@ -14,7 +16,7 @@ Repository = abstraction baraye **load/save-e entity**. Unit of Work = **yek tra
 
 ## Chera Repository?
 
-Bedune abstraction:
+Age handler mostaghim `DbContext` midone, Application be infrastructure tight couple mishe — test sakht mishe va swap-e storage practically momken nist:
 
 ```csharp
 // Handler mostaghim DbContext midone → tight coupling
@@ -28,7 +30,7 @@ public class CreateOrderHandler(AppDbContext db)
 }
 ```
 
-Ba Repository:
+Ba Repository, handler faghat interface midone; SaveChanges az UoW miad:
 
 ```csharp
 public interface IOrderRepository
@@ -47,18 +49,19 @@ public class CreateOrderHandler(IOrderRepository orders, IUnitOfWork uow)
 }
 ```
 
-**Maziat:**
-- Application/Domain az EF concrete depend **nemikone** (ideally)
-- Test: mock `IOrderRepository`
-- Swap storage later (rare, vali possible)
+**Chera in behtar-e?**
 
-**Ghalat-e common:** Repository = dump CRUD baraye har table. Behtar: **aggregate-oriented** — methods ke domain lazem dare.
+- Application/Domain ideally az EF concrete depend **nemikone** — faghat az contract-e domain.
+- Test: `IOrderRepository` ra mock mikoni bedune DB.
+- Swap storage later rare-e, vali boundary roshan mimune.
+
+**Ghalat-e common:** Repository ra dump-e CRUD baraye *har table* midunan. Behtar **aggregate-oriented** bashe — method-hayi ke domain vaghean lazem dare (`GetWithLinesAsync`, na `GetAll` + filter dar handler).
 
 ---
 
 ## Unit of Work chie?
 
-Problem: chand repo, yek transaction.
+Problem sade-st: chand repo, **yek** transaction. Mikhay Order + OrderLine + Inventory ya hame commit shan ya hichkodom:
 
 ```
 Insert Order
@@ -76,11 +79,11 @@ public interface IUnitOfWork
 
 | style | chi |
 |---|---|
-| **Explicit UoW** | `IUnitOfWork` + repos share same DbContext/session |
+| **Explicit UoW** | `IUnitOfWork` + repo-ha hamoon session/DbContext ra share mikonan |
 | **DbContext as UoW** | EF DbContext khodesh UoW-e ← **Dejban** |
 | **UoW wraps repos** | `uow.Orders`, `uow.Products` (classic Fowler) |
 
-EF Change Tracker = in-memory unit of work. `SaveChanges` = flush + transaction.
+To EF, Change Tracker = in-memory unit of work. `SaveChanges` = flush + transaction. Dejban in model ra explicit mikone ba interface-e thin `IUnitOfWork`.
 
 ---
 
@@ -104,11 +107,13 @@ public interface IOrderRepository
 }
 ```
 
-**World trend (DDD):** specific repos per aggregate. Generic often anemic + leaky.
+Trend-e DDD to donya: **specific repo per aggregate**. Generic zud anemic va leaky mishe — har query digar be `IQueryable` ya extension-haye EF niaz peyda mikone.
 
 ---
 
 ## IQueryable smell
+
+Chizi ke Dejban ziad dare:
 
 ```csharp
 // Interface:
@@ -128,21 +133,25 @@ await repo.GetQueryable()
 | Kam boilerplate | Hard to mock; provider-specific |
 | Fast to ship | Persistence details leak upward |
 
-**Pure alternative:** Specification / query object / dedicated query methods on repo (no `IQueryable` on interface).
+**Pure alternative:** Specification, query object, ya method-haye query-e makhsus ru-ye repo — bedune `IQueryable` ru-ye interface. Dejban trade-off ra be tarafe speed of delivery gerefte.
 
 ---
 
 ## Repository anti-patterns
 
-1. **SaveChanges dakhel-e repo** — UoW boundary blur; chand repo = chand commit
-2. **Repo per table** — ignore aggregate
-3. **Returning `DbSet` / tracked entities everywhere** — accidental updates
-4. **God repository** — 50 methods
-5. **Generic repo + business methods mixed** — confusion
+In-ha ra to mosahebe / code review zud mishnasi:
+
+1. **SaveChanges dakhel-e repo** — boundary-e UoW blur mishe; chand repo = chand commit-e joda.
+2. **Repo per table** — aggregate ra ignore mikone (OrderLine joda az Order).
+3. **Returning `DbSet` / tracked entities everywhere** — update-haye accidental.
+4. **God repository** — 50 method; digar «repository» nist, service dump-e.
+5. **Generic repo + business methods mixed** — developer nemidune koja chi ra seda bezane.
 
 ---
 
 ## Testing
+
+Ba interface-haye clean, unit test sade-st:
 
 ```csharp
 var repo = Substitute.For<IOrderRepository>();
@@ -155,21 +164,25 @@ repo.Received(1).Insert(Arg.Any<Order>());
 await uow.Received(1).SaveChangesAsync(ct);
 ```
 
-Age `IQueryable` leak → mock sakht (in-memory EF ya integration test).
+Age `IQueryable` leak dashte bashi, mock sakht mishe — ya in-memory EF ya integration test. In yeki az gheymat-haye olgu-ye Dejban-e.
 
 ---
 
 ## Chizaei ke to donya hastan vali inja kam/nistan
 
-- **Classic UoW with repo properties** (`uow.Visitors`)
-- **Specification pattern** for queries
-- **Generic `IRepository<T>` to Dejban modules** — GateServer dare, Dejban na
+Donya in-ha ra ham dare; Dejban modules kamtar:
+
+- **Classic UoW with repo properties** (`uow.Visitors`) — Fowler-style
+- **Specification pattern** baraye query-ha
+- **Generic `IRepository<T>`** — GateServer dare, module-haye Dejban na
 - **Repo method per query** bedune `IQueryable` — partial
 - **Separate read store / query repos (CQRS Level 3)** — nist
 
 ---
 
 # BAKHSH-E DOVOM: DEJBAN — Repository + UoW to in proje
+
+To modular monolith, har module (Visitors, Personnels, …) **DbContext-e khodesh** ra dare. Pattern yeksan-e: Domain interface tarif mikone, Infrastructure implement mikone, Application `IUnitOfWork` ra seda mizane. Yek HTTP request = yek DI scope = **yek** DbContext instance ke ham repo-ha azash estefade mikonan ham UoW.
 
 ## Pattern-e kolli (8 module)
 
@@ -182,7 +195,7 @@ DI:            AddScoped<IVisitorRepository, VisitorRepository>()
                AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<VisitorsDbContext>())
 ```
 
-**Yek scope = yek DbContext = yek UoW.** Repo va UoW **hamoon instance**-e tracker.
+**Yek scope = yek DbContext = yek UoW.** Repo va UoW **hamoon instance**-e tracker ra share mikonan — age do DbContext dashte bashi, SaveChanges digar «yek transaction» nist.
 
 ---
 

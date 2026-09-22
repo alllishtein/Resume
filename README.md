@@ -29,20 +29,20 @@ in folder joda az git-e backend/frontend. har fasl ye `.md`.
 | 18 | [day-18-modular-di.md](./day-18-modular-di.md) | Modular DI (`AddXxxModule`) |
 | 19 | [day-19-dapper-outbox-inbox.md](./day-19-dapper-outbox-inbox.md) | Dapper (outbox/inbox) |
 | 20 | [day-20-masstransit-rabbitmq.md](./day-20-masstransit-rabbitmq.md) | MassTransit + RabbitMQ |
-| 21 | — | Transactional Outbox (custom Dejban) |
-| 22 | — | MassTransit EF Outbox |
-| 23 | — | Inbox + Idempotent Handler |
-| 24 | — | Decorator (Scrutor) |
-| 25 | — | HybridCache + Redis |
-| 26 | — | SignalR (server) |
-| 27 | — | gRPC (ZK / Tiam / Virdi) |
-| 28 | — | MinIO / S3 |
-| 29 | — | Quartz + Hangfire |
-| 30 | — | Serilog + Seq + OpenTelemetry |
-| 31 | — | Health Checks + Docker + EF migration workflow |
-| 32 | — | Polly |
-| 33 | — | OpenAPI + Scalar |
-| 34 | — | Options pattern |
+| 21 | [day-21-transactional-outbox.md](./day-21-transactional-outbox.md) | Transactional Outbox (custom Dejban) |
+| 22 | [day-22-masstransit-ef-outbox.md](./day-22-masstransit-ef-outbox.md) | MassTransit EF Outbox |
+| 23 | [day-23-inbox-idempotent-handler.md](./day-23-inbox-idempotent-handler.md) | Inbox + Idempotent Handler |
+| 24 | [day-24-decorator-scrutor.md](./day-24-decorator-scrutor.md) | Decorator (Scrutor) |
+| 25 | [day-25-hybridcache-redis.md](./day-25-hybridcache-redis.md) | HybridCache + Redis |
+| 26 | [day-26-signalr-server.md](./day-26-signalr-server.md) | SignalR (server) |
+| 27 | [day-27-grpc-zk-tiam-virdi.md](./day-27-grpc-zk-tiam-virdi.md) | gRPC (ZK / Tiam / Virdi) |
+| 28 | [day-28-minio-s3.md](./day-28-minio-s3.md) | MinIO / S3 |
+| 29 | [day-29-quartz-hangfire.md](./day-29-quartz-hangfire.md) | Quartz + Hangfire |
+| 30 | [day-30-serilog-seq-opentelemetry.md](./day-30-serilog-seq-opentelemetry.md) | Serilog + Seq + OpenTelemetry |
+| 31 | [day-31-health-docker-ef-migrations.md](./day-31-health-docker-ef-migrations.md) | Health Checks + Docker + EF migration workflow |
+| 32 | [day-32-polly.md](./day-32-polly.md) | Polly |
+| 33 | [day-33-openapi-scalar.md](./day-33-openapi-scalar.md) | OpenAPI + Scalar |
+| 34 | [day-34-options-pattern.md](./day-34-options-pattern.md) | Options pattern |
 | 35 | — | Factory + Strategy (device sync) |
 | 36 | — | ASP.NET Identity |
 | 37 | — | Permission claims |
@@ -69,6 +69,6 @@ in folder joda az git-e backend/frontend. har fasl ye `.md`.
 | 58 | — | GitLab CI + PM2 |
 | 59 | [day-59-algorithms-big-o.md](./day-59-algorithms-big-o.md) | Algorithms + Big-O (mosahebe) |
 
-**Amade:** 00–20, 59 · **Khali (—):** 21–58
+**Amade:** 00–34, 59 · **Khali (—):** 35–58
 
-Avalin khali: **Day 21 — Transactional Outbox (custom Dejban)**
+Avalin khali: **Day 35 — Factory + Strategy (device sync)**

@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-Dejban API = **Minimal APIs**, na MVC Controllers. Har HTTP route ye class-e koochik `internal sealed class X : IEndpoint` ba method `MapEndpoint` — dakhelesh `app.MapGet/Post/...` + MediatR `ISender.Send` + `ErrorOr.Match(Results.Ok, ApiResults.Problem)`. Discovery automatic: har module `services.AddEndpoints(Presentation.Assembly)` → reflection hame `IEndpoint` ha ra `Transient` register mikone; `Program` faghat `app.MapEndpoints()` seda mizane. In **OCP**: endpoint jadid = class jadid, **Program avaz nemishe**. Versioning URL (`/api/v{version}`), tags, auth, form upload, endpoint filters (`RequirePermissions`, `RequireSiteAccess`) — hame roye `RouteHandlerBuilder` chain. Standalone services (Identity/ACL/…) ziad **Controllers** daran — do style dar org.
+**Minimal APIs** yani route ra mostaghim ba `MapGet` / `MapPost` tarif mikoni — bedune class-e Controller. To Dejban, har HTTP route ye class-e koochik `internal sealed class X : IEndpoint` ba method `MapEndpoint`-e: dakhelesh `app.MapGet/Post/...` + MediatR `ISender.Send` + `ErrorOr.Match(Results.Ok, ApiResults.Problem)`. Presentation thin mimune; business to handler-e.
+
+Discovery automatic-e: har module `services.AddEndpoints(Presentation.Assembly)` → reflection hame `IEndpoint` ha ra `Transient` register mikone; `Program` faghat `app.MapEndpoints()` seda mizane. In **OCP**-e: endpoint jadid = class jadid, **Program avaz nemishe**. Versioning URL (`/api/v{version}`), tags, auth, form upload, endpoint filters (`RequirePermissions`, `RequireSiteAccess`) — hame roye `RouteHandlerBuilder` chain. Standalone services (Identity/ACL/…) ziad **Controllers** daran — do style dar org.
 
 ---
 
@@ -30,6 +32,8 @@ Minimal API = kam boilerplate, az code-behin route, DI parameter injection, `IRe
 
 ## Minimal API chie? (hello world)
 
+Bedune Controller class: route + handler lambda (ya method group):
+
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
@@ -40,8 +44,6 @@ app.MapPost("/orders", (CreateOrderDto dto) => Results.Created($"/orders/{dto.Id
 
 app.Run();
 ```
-
-Bedune Controller class. Route + handler lambda (ya method group).
 
 ### Verb helpers
 
@@ -58,6 +60,8 @@ app.Map("/", ...) // all methods — rare
 ---
 
 ## Parameter binding — az koja miad?
+
+Framework az source-haye mokhtalef bind mikone:
 
 | source | chejori |
 |---|---|
@@ -105,6 +109,7 @@ Results.Redirect(...)
 `TypedResults.*` — generic compile-time metadata better for OpenAPI.
 
 Minimal handler return types:
+
 - `IResult`
 - `Task<IResult>`
 - raw object → framework wraps as Ok (sometimes) — prefer explicit `Results.*`
@@ -129,6 +134,8 @@ Shared prefix + shared filters. Dejban **kam** az MapGroup estefade mikone — h
 
 ## Middleware vs Endpoint Filter vs MediatR Behavior
 
+Request az chand layer rad mishe — har layer job-e khodesh ra dare:
+
 ```
 HTTP request
   → Middleware pipeline (CORS, AuthN, AuthZ, Tenant, ExceptionHandler)
@@ -152,6 +159,8 @@ HTTP request
 ---
 
 ## `IEndpointFilter`
+
+Shabih-e middleware, vali per-route:
 
 ```csharp
 public class PermissionRequirementFilter(HashSet<string> permissions) : IEndpointFilter
@@ -198,7 +207,7 @@ Attribute-style policies still work via metadata; filters common for site-scoped
 
 ## API versioning
 
-Strategies: URL segment, header, query.
+Strategies: URL segment, header, query. Dejban URL segment mikhad:
 
 ```csharp
 // URL segment — Dejban
@@ -223,6 +232,7 @@ Asp.Versioning package (ex Microsoft.AspNetCore.Mvc.Versioning evolution).
 Minimal APIs + `AddOpenApi()` (.NET 9/10) + Scalar UI.
 
 Metadata:
+
 ```csharp
 .WithName("GetPersonnels")           // operationId / link generation
 .WithTags("Personnels")              // group in docs
@@ -268,6 +278,7 @@ Features/
 Dejban nazdik: Application folder per use case + Presentation `CreatePersonnel.cs` joda (layer folders, na pure vertical folder). Idea yeksan: **yek feature = yek endpoint class**.
 
 Libraries:
+
 - **Carter** — modules implement `ICarterModule` AddRoutes
 - **FastEndpoints** — class per endpoint with HandleAsync
 - **Dejban IEndpoint** — homemade Carter-like, simple
@@ -348,6 +359,8 @@ Thin endpoint = test value to Application. Fat endpoint (logic in lambda) = hard
 ---
 
 # BAKHSH-E DOVOM: DEJBAN — Minimal APIs + IEndpoint to in proje
+
+Olgu-ye Dejban: har route ye class `IEndpoint` — discovery ba reflection, Map to startup. Contract sade-st; ghodrat-esh to `AddEndpoints` / `MapEndpoints`-e. ~380 implementation across modules.
 
 ## Contract
 

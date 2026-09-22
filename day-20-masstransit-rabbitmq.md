@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-MassTransit = .NET abstraction roye message broker. RabbitMQ = broker. Dejban ba ina **integration event** publish mikone: domain event → outbox → `IEventBus.PublishAsync` → RabbitMQ → consumers. Do style consumer: (1) Dejban modules = inbox table + Quartz, (2) ACL/Identity/RequestTracker = `IConsumer` + MassTransit EF Outbox. Plus request/response (`GetResponse`). Retry + circuit breaker built-in.
+**MassTransit** abstraction-e messaging toye .NET-e: tu type-haye C#, consumer, retry, outbox, va request/response fekr mikoni, va khodesh ba broker (inja **RabbitMQ**) harf mizane. Dejban ba ina **integration event** publish mikone — yani chizi ke beyn-e service-ha / module-ha bayad sync beshe, na faghat domain event-e dakheli.
+
+Masir-e kolli injuri-e: domain event → outbox → `IEventBus.PublishAsync` → RabbitMQ → consumer-ha. Do style consumer darim: (1) module-haye Dejban.Api = inbox table + Quartz, (2) ACL / Identity / RequestTracker = `IConsumer` + MassTransit EF Outbox. Plus request/response ba `GetResponse`. Retry va circuit breaker built-in hastan.
 
 ---
 
@@ -16,12 +18,14 @@ MassTransit = .NET abstraction roye message broker. RabbitMQ = broker. Dejban ba
 
 | sync HTTP | async messaging |
 |---|---|
-| caller wait | fire-and-forget / eventually |
+| caller wait mikone | fire-and-forget / eventually consistent |
 | tight coupling | loose coupling |
-| both up required | producer continues if consumer down (if durable) |
-| request/response natural | pub/sub natural |
+| hardo taraf bayad up bashan | producer mitone edame bede age consumer down bashe (age durable) |
+| request/response tabi'i-e | pub/sub tabi'i-e |
 
-**Use messaging when:** cross-service side effects, fan-out, load leveling, reliability.
+**Vaghti messaging be dard mikhore:** side-effect-haye cross-service, fan-out (chand consumer yek event), load leveling, va reliability vaghti nemikhay request HTTP ro be hame dependency-ha vasl koni.
+
+Yani chi? Age CreatePersonnel anjam shod, Visitors, Vehicles, ACL, va Identity bayad khabar dar she — agar hame ro sync HTTP seda koni, latency o failure-ha ziad mishe. Bus = ye event midam, har ki gush mikone.
 
 ---
 
@@ -29,30 +33,33 @@ MassTransit = .NET abstraction roye message broker. RabbitMQ = broker. Dejban ba
 
 | concept | chi |
 |---|---|
-| **Exchange** | router — receive publish, route to queues |
-| **Queue** | buffer of messages |
-| **Binding** | exchange → queue rule (routing key) |
-| **Routing key** | label for routing |
-| **Ack / Nack** | consumer confirm / reject |
-| **Durable** | survive broker restart |
-| **Prefetch** | how many unacked messages per consumer |
+| **Exchange** | router — publish miad inja, ba rule be queue miravad |
+| **Queue** | buffer-e message-ha |
+| **Binding** | ghaede-ye exchange → queue (routing key) |
+| **Routing key** | label baraye routing |
+| **Ack / Nack** | consumer confirm / reject mikone |
+| **Durable** | ba restart-e broker mire |
+| **Prefetch** | chand message unacked dar ye consumer |
 
-Exchange types: direct, topic, fanout, headers.
+Exchange type-ha: direct, topic, fanout, headers.
 
 ```
 Publisher → Exchange → (bindings) → Queue(s) → Consumer(s)
 ```
 
+To practice, MassTransit bishtar-e in topology ro barat misaze — to type publish mikoni, endpoint name formatter queue name midahad.
+
 ---
 
 ## MassTransit chie?
 
-Library that:
-- Maps C# types → exchanges/queues
-- Serializes messages (JSON)
-- Retries, circuit breaker, outbox
-- Consumers as `IConsumer<T>`
-- Request/response, sagas, scheduling
+Library-i ke:
+
+- Type-haye C# ro be exchange/queue map mikone
+- Message ro serialize mikone (ma'mulan JSON)
+- Retry, circuit breaker, outbox midahad
+- Consumer ha ro be shekl-e `IConsumer<T>` minevisi
+- Request/response, saga, scheduling dare
 
 ```csharp
 services.AddMassTransit(x =>
@@ -69,7 +76,9 @@ services.AddMassTransit(x =>
 await bus.Publish(new OrderCreated(orderId));
 ```
 
-**Endpoint name formatter:** kebab-case → queue `order-created`.
+**Endpoint name formatter:** kebab-case — yani `OrderCreated` → queue `order-created`.
+
+Chera abstraction? Ta Application layer mostaghim be Rabbit API vasl nashe; test o swap-e transport asoon-tar bashe; va pattern-haye enterprise (outbox, retry) yekja bemunan.
 
 ---
 
@@ -78,8 +87,10 @@ await bus.Publish(new OrderCreated(orderId));
 | | Publish | Send |
 |---|---|---|
 | pattern | pub/sub | point-to-point |
-| topology | exchange → multiple queues | specific endpoint |
-| use | events (“something happened”) | commands (“do this”) |
+| topology | exchange → chand queue | endpoint-e khas |
+| use | event («chizi etefagh oftad») | command («in kar ro bokon») |
+
+Dejban baraye integration event-ha **Publish** estefade mikone — chand service bayad copy begiran. Send bishtar vase command-haye mokhatab-e yek endpoint-e.
 
 ---
 
@@ -95,8 +106,9 @@ public class OrderCreatedConsumer : IConsumer<OrderCreated>
 }
 ```
 
-**Competing consumers:** multiple instances same queue → load balance.  
-**InstanceId:** separate queue per service (`order-created-aclserver`) → each service gets a copy (fan-out).
+**Competing consumers:** chand instance roye **hamun** queue → load balance. Yani scale-out-e worker.
+
+**InstanceId:** queue joda baraye har service (`order-created-aclserver`) → **har** service ye copy migire (fan-out). In to Dejban kheili moheme — ACL va Identity hardo bayad `PersonnelCreated` ro bebinan, na inke yeki az do ta.
 
 ---
 
@@ -104,11 +116,11 @@ public class OrderCreatedConsumer : IConsumer<OrderCreated>
 
 | guarantee | meaning |
 |---|---|
-| At-most-once | may lose |
-| At-least-once | may duplicate ← **usual** |
-| Exactly-once | hard; approximate with inbox idempotency |
+| At-most-once | momken-e lose she |
+| At-least-once | momken-e duplicate she ← **ma'mul** |
+| Exactly-once | sakht; ba inbox + idempotency approx mishi |
 
-**Idempotent consumers** required for at-least-once.
+**Idempotent consumer** baraye at-least-once lazeme. Broker guarantee nemide «faghat yek bar side-effect»; to bayad safe bash i age dobare Consume seda zade shod.
 
 ---
 
@@ -130,7 +142,9 @@ cfg.UseCircuitBreaker(cb =>
 });
 ```
 
-Fail → retry → still fail → error queue / skip. Too many fails → circuit open → pause.
+Flow: fail → retry → hanuz fail → error queue / skip. Age fail-haye ziad ba ham bioftan → circuit open → consume pause mishe ta dependency nafas bekeshad.
+
+Yani chi? Transient DB blip = retry. Dependency-e murde = circuit ta storm nasazi.
 
 ---
 
@@ -146,9 +160,9 @@ x.AddEntityFrameworkOutbox<AppDbContext>(o =>
 cfg.UseEntityFrameworkOutbox<AppDbContext>(context);
 ```
 
-Publish joins same DB transaction as `SaveChanges` — no dual-write problem.
+Publish ba `SaveChanges` to **hamun** DB transaction miravad — dual-write problem (DB OK + broker fail) kam mishe. Day 22 in ro deep mikone.
 
-**Alternative:** custom outbox table + background job (Dejban modules — Day 14).
+**Alternative:** custom outbox table + background job (module-haye Dejban — Day 14/21).
 
 ---
 
@@ -166,7 +180,7 @@ public async Task Consume(ConsumeContext<CheckStock> context)
 }
 ```
 
-Sync-style RPC over bus — timeout possible. Use sparingly (coupling + latency).
+Sync-style RPC roye bus — timeout momkene. Kam estefade kon: coupling + latency. Ja-yi ke query cross-service lazem-e va HTTP internal nadari, Dejban in olgu ro dare.
 
 ---
 
@@ -175,21 +189,23 @@ Sync-style RPC over bus — timeout possible. Use sparingly (coupling + latency)
 | | RabbitMQ | Kafka |
 |---|---|---|
 | model | smart broker / queues | log / partitions |
-| replay | hard | easy (offset) |
+| replay | sakht | asoon (offset) |
 | use | task dispatch, RPC, classic events | analytics, CDC, high throughput stream |
 
-Dejban = RabbitMQ.
+Dejban = **RabbitMQ**. Kafka inja transport-e asli nist.
 
 ---
 
 ## Chizaei ke to donya hastan vali inja kam/nistan
 
-- **Sagas / state machines** — MassTransit Automatonymous
+- **Sagas / state machines** — MassTransit Automatonymous (Dejban choreography mikone, na orchestration-e rasmi)
 - **Message scheduling** — delayed publish
 - **Kafka / Azure Service Bus** transports
-- **MassTransit.Redis** as bus — package present, not wired
+- **MassTransit.Redis** as bus — package version shode, vali bus wired nist
 - **Courier routing slips** — multi-step activities
 - **Dead letter management UI** beyond RabbitMQ management
+
+In lists yani «nadari» = smell / future option, na bug.
 
 ---
 
@@ -204,6 +220,8 @@ MassTransit.EntityFrameworkCore  8.5.7
 MassTransit.Redis                8.5.7  <!-- versioned, bus NOT using it -->
 ```
 
+Yadet bashe version-ha ba `Directory.Packages.props` sync bemunan across service-ha — schema-e serialization o outbox table ba upgrade avaz mishe.
+
 ---
 
 ## Infrastructure
@@ -217,11 +235,14 @@ eventbus:
 ```
 
 `definitions.json`:
-- Pre-declares **queues** (kebab-case)
-- Exchanges/bindings empty — MassTransit creates at runtime
-- Examples: `personnel-created`, `personnel-created-aclserver`, `get-user-site-claims`
+
+- Queue-haye **kebab-case** ro pre-declare mikone
+- Exchange/binding-ha khali — MassTransit dar runtime misaze
+- Mesal: `personnel-created`, `personnel-created-aclserver`, `get-user-site-claims`
 
 Config bind: `RabbitMqTransport` / `RabbitMqTransportOptions`.
+
+**Drift risk:** age MassTransit queue name avaz she vali definitions ghadimi bemune, startup warning / missing bind.
 
 ---
 
@@ -245,7 +266,7 @@ internal sealed class EventBus(IBus bus) : IEventBus
 }
 ```
 
-Application depends on `IEventBus`, na MassTransit types — Clean Architecture.
+Application be `IEventBus` depend mikone, **na** type-haye MassTransit — Clean Architecture. Test double asoon; Infrastructure detail to Common.Infrastructure mimune.
 
 ---
 
@@ -269,13 +290,15 @@ public sealed class SiteCreated : IntegrationEvent { /* SiteId, Name, ... */ }
 
 Folder: `Common/EventBus/Contracts/Events/` + `Requests/`.
 
+**Fat event:** projection kamel — consumer ACL user misaze bedune DB call digar; versioning sakht — field hazf = break. Dejban baraye speed-e ACL/RT **fat** entekhab karde.
+
 ---
 
 ## Publish path (Dejban)
 
 ```
 Personnel.Create → Raise(PersonnelCreatedDomainEvent)
-  → EF SaveChanges → custom outbox insert (Day 14)
+  → EF SaveChanges → custom outbox insert (Day 14/21)
   → ProcessOutboxJob → PersonnelCreatedDomainEventHandler
        → GetPersonnelQuery
        → eventBus.PublishAsync(new PersonnelCreated(...))
@@ -288,6 +311,8 @@ await eventBus.PublishAsync(
     new PersonnelCreated(domainEvent.Id, domainEvent.OccurredOnUtc, /* mapped fields */),
     cancellationToken);
 ```
+
+Yani HTTP response ghabl az fan-out-e kamel barmigarde — eventual consistency. Reliability roye **outbox** hast, na mid-request Publish.
 
 ---
 
@@ -311,9 +336,9 @@ configure.AddConsumer<IntegrationEventConsumer<PersonnelCreated>>();
 // ...
 ```
 
-Later: Quartz `ProcessInboxJob` → `IntegrationEventHandler<T>` (read-model upsert).
+Ba'd: Quartz `ProcessInboxJob` → `IntegrationEventHandler<T>` (read-model upsert). Day 23 deep.
 
-**Queue names:** plain kebab (`personnel-created`) — modules compete; idempotent by event id.
+**Queue names:** plain kebab (`personnel-created`) — module-ha compete; idempotent by event id. Chera compete OK-e? Chun har module schema-e khodesh inbox dare va ON CONFLICT / handler dedup dare — vali mental model confusing-e (smell).
 
 ### B) ACLServer / RequestTracker / Identity — real consumers
 
@@ -331,9 +356,9 @@ x.AddConsumer<PersonnelCreatedConsumer>()
 // → queue personnel-created-aclserver (own copy of every event)
 ```
 
-Same for RequestTracker (`InstanceId = "RequestTracker"`), IdentityServer.
+Hamin pattern baraye RequestTracker (`InstanceId = "RequestTracker"`) va IdentityServer.
 
-**Chera InstanceId?** Har service bayad **hame** event-ha ra bebine (fan-out). Bedune InstanceId, competing consumers → yek service faghat.
+**Chera InstanceId?** Har service bayad **hame** event-ha ra bebine (fan-out). Bedune InstanceId, competing consumers → yek service faghat message migire.
 
 ---
 
@@ -382,8 +407,8 @@ DbContext: `AddInboxStateEntity` / `AddOutboxMessageEntity` / `AddOutboxStateEnt
 
 ### Dejban InfrastructureConfiguration
 
-- Same retry + CB + tenant filters + `ConfigureEndpoints`
-- Modules inject `ConfigureConsumers` / `ConfigureReceiveEndpoints`
+- Hamin retry + CB + tenant filters + `ConfigureEndpoints`
+- Module-ha `ConfigureConsumers` / `ConfigureReceiveEndpoints` inject mikonan
 - **No** MassTransit EF Outbox — custom Quartz outbox/inbox
 
 ### Services using MassTransit EF Outbox
@@ -399,7 +424,7 @@ ACLServer, IdentityServer, RequestTracker, DCC, GateServer, Reporting.
 cfg.UseTenantContextFilters(context);
 ```
 
-Publish/consume filters carry `site_ids` / super-admin — inbox workers restore `TenantContextAccessor`.
+Publish/consume filter-ha `site_ids` / super-admin ro carry mikonan — inbox worker-ha `TenantContextAccessor` ro restore mikonan. Bedune in, read-model sync ba tenant khali eshtebah filter mishe (Day 16).
 
 ---
 
@@ -424,13 +449,15 @@ public async Task Consume(ConsumeContext<HasApprovedRequestStep> context)
 ```
 
 Registration: `AddRequestClient<HasApprovedRequestStep>()` in VisitorsModule.  
-Outbox often **skipped** on RPC endpoints (callback excludes `get-*` names).
+Outbox often **skipped** on RPC endpoints (callback `get-*` names ro exclude mikone) — latency kamtar.
 
 ### Other RPC
 
-- `GetUserSiteClaims` (Identity)
+- `GetUserSiteClaims` (Identity) — claims enrichment (Day 25 cache mikone)
 - `IsContractorRegistrationNumberUnique` (Dejban ↔ Identity)
 - ACL service endpoints discovery
+
+**Tradeoff:** Visitors **depends** RequestTracker up — fallback? Hang = UX block. Interview: sometimes HTTP + Polly clearer.
 
 ---
 
@@ -452,6 +479,8 @@ Outbox often **skipped** on RPC endpoints (callback excludes `get-*` names).
   Personnel copy
 ```
 
+In diagram ra **hafz kon** — mosahebe + debug. Yek contract, do consume style.
+
 ---
 
 ## Compare outbox strategies
@@ -463,14 +492,14 @@ Outbox often **skipped** on RPC endpoints (callback excludes `get-*` names).
 | Inbox | custom `inbox_messages` | MassTransit InboxState |
 | Consumer | bridge → handler | direct `IConsumer` |
 
-Har do transactional — implementation fargh.
+Har do transactional — implementation fargh. Goal yeksan: dual-write nabashe.
 
 ---
 
 ## Smell-ha
 
-1. **Dejban ConfigureReceiveEndpoints empty stubs** — dead API surface
-2. **Competing consumers across Dejban modules** on same queue name — works via idempotent inbox, vali confusing
+1. **Dejban ConfigureReceiveEndpoints empty stubs** — dead API surface; extension point hast vali alan empty
+2. **Competing consumers across Dejban modules** on same queue name — ba idempotent inbox kar mikone, vali confusing
 3. **definitions.json queues vs MassTransit auto topology** — drift risk
 4. **MassTransit.Redis unused** for bus
 5. **No saga** — multi-step workflows = choreography only
@@ -481,6 +510,8 @@ Har do transactional — implementation fargh.
 10. **No formal contract tests** (Pact) for events
 11. **Error queue / poison** handling not customized in snippets
 12. **Duplicate consumer code** across services for same event shape
+
+Har smell ye tradeoff dare — interview age «chera inja?» porsidan, in list komak mikone.
 
 ---
 
@@ -550,7 +581,7 @@ configure.UsingRabbitMq((context, cfg) =>
 | `ConfigureReceiveEndpoints` | optional manual receive endpoint tweak (often **empty stub**) |
 | `ConfigureEndpoints` | MassTransit auto-bind consumer → queue name |
 
-**Smell:** `// configure.AddConsumers(Assembly)` commented — har event **dasti** `AddConsumer<IntegrationEventConsumer<T>>` → compile-time list, vali boilerplate ziad.
+**Smell:** `// configure.AddConsumers(Assembly)` commented — har event **dasti** `AddConsumer<IntegrationEventConsumer<T>>` → compile-time list, vali boilerplate ziad. Maziat: intentional surface; gheymat: har event jadid = edit-e module.
 
 ---
 
@@ -569,7 +600,7 @@ cfg.UseSendFilter(typeof(TenantContextSendFilter<>), context);
 
 **Send (RPC):** request client ham bayad tenant dashte bashe ta downstream query dorost filter she.
 
-Bedune in: integration handler to Visitors module ba tenant khali — read-model sync eshtebah.
+Bedune in: integration handler to Visitors module ba tenant khali — read-model sync eshtebah. Day 16 tenancy + Day 20 bus = yek dastan.
 
 ---
 
@@ -581,10 +612,13 @@ Bedune in: integration handler to Visitors module ba tenant khali — read-model
 | `PersonnelCreatedConsumer` + `InstanceId = "ACLServer"` | `personnel-created-aclserver` |
 
 MassTransit RabbitMQ:
+
 - publish → **exchange** (type name based)
 - consumer endpoint → **queue** bind shode
 
 `definitions.json` queues **pre-declare** — MassTransit runtime ham topology misaze. **Drift:** queue name avaz shod, definitions ghadimi → startup warning / missing bind.
+
+Lab tip: management UI `:15672` — depth-e `personnel-created` vs `personnel-created-aclserver` ro moghayese kon.
 
 ---
 
@@ -602,7 +636,7 @@ Many messages fail together
 
 **Na haman outbox job retry:** Dejban module inbox/outbox **Quartz** retry nadare (Day 19). MassTransit retry **faghat roye IConsumer.Consume** — baraye `IntegrationEventConsumer` insert inbox, insert fail → retry; insert success → OK.
 
-**ACL consumer** ba EF outbox: consume + SaveChanges + bus outbox flush — retry mitone duplicate side-effect bede age consumer idempotent nist.
+**ACL consumer** ba EF outbox: consume + SaveChanges + bus outbox flush — retry mitone duplicate side-effect bede age consumer idempotent nist. Logical check (`existingUser != null`) + InboxState = safety net.
 
 ---
 
@@ -634,7 +668,7 @@ var response = await client.GetResponse<HasApprovedRequestStepResponse>(
 Task PublishBatchAsync<T>(IEnumerable<T> events, CancellationToken ct);
 ```
 
-Agar handler chand integration event yekja — kamtar round-trip. Hanooz **har event** masir Rabbit joda (na transaction across messages).
+Agar handler chand integration event yekja — kamtar round-trip. Hanooz **har event** masir Rabbit joda (na transaction across messages). Atomicity faghat dar outbox-e producer-e.
 
 ---
 
@@ -643,7 +677,7 @@ Agar handler chand integration event yekja — kamtar round-trip. Hanooz **har e
 | Event | producer (typical) | consumers (typical) |
 |---|---|---|
 | `PersonnelCreated` | Personnels outbox handler | Visitors/Vehicles inbox, ACL, RT |
-| `SiteCreated` | Sites module | read-models across modules |
+| `SiteCreated` | Sites module / Identity | read-models across modules |
 | `RequestStepApproved` | RequestTracker | Visitors reservation lock |
 | `AccessLogCreated` | ACL / devices | reporting paths |
 
@@ -651,7 +685,7 @@ Agar handler chand integration event yekja — kamtar round-trip. Hanooz **har e
 
 **Thin event:** faghat `PersonnelId` — consumer query bezane — coupling kamtar, traffic bishtar.
 
-Dejban = **fat** baraye ACL/RT speed.
+Dejban = **fat** baraye ACL/RT speed. Interview: tradeoff ro boland bego.
 
 ---
 
@@ -671,7 +705,7 @@ Dejban = **fat** baraye ACL/RT speed.
   T2: Rabbit publish atomic with DB (same pattern intent)
 ```
 
-Har do **at-least-once** — idempotency layer joda.
+Har do **at-least-once** — idempotency layer joda (Day 21–23).
 
 ---
 
@@ -682,7 +716,7 @@ Har do **at-least-once** — idempotency layer joda.
 - Consumer lag: inbox `processed_on_utc IS NULL` count per schema
 - Circuit breaker open logs — spike correlation
 
-Dejban: centralized dashboard **limited** — SQL + Rabbit UI manual.
+Dejban: centralized dashboard **limited** — SQL + Rabbit UI manual. Lab: in checklist ro roye kaghaz dashte bash.
 
 ---
 
@@ -749,5 +783,27 @@ Dejban: centralized dashboard **limited** — SQL + Rabbit UI manual.
 
 ---
 
-*Day 20 tamum. Ba'd: Day 21 — Transactional Outbox (custom Dejban) — khali. Fehrest: [README.md](./README.md).*
+## Interview 60s
 
+> «We publish integration events over MassTransit and RabbitMQ. Modular Dejban modules write to an inbox then process with Quartz; Identity and ACL use real IConsumers with InstanceId queues so every service gets a copy. Retry and circuit breaker sit on the bus; IEventBus keeps Application free of MassTransit types.»
+
+---
+
+## Glossary
+
+| kalame | ma'ni |
+|---|---|
+| Integration event | cross-boundary «happened» message |
+| Domain event | internal aggregate notification |
+| Fan-out | har service ye copy |
+| Competing consumers | chand worker yek queue |
+| InstanceId | suffix baraye queue-e service |
+| At-least-once | momken tekrari |
+| Outbox | publish intent to DB |
+| Inbox | inbound durable buffer |
+| Poison | payam-e fail-daemi |
+| Fat event | payload-e por projection |
+
+---
+
+*Day 20 tamum. Ba'd: Day 21 — Transactional Outbox (custom Dejban) (amade). Fehrest: [README.md](./README.md).*

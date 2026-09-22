@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-Soft delete = row **nemire** az DB; flag `IsDeleted = true` (+ `DeletedAt`). Query-ha automatic `WHERE is_deleted = false` mibinan (EF **global query filter**). Delete-e domain = method `SoftDelete()` ke flag + domain event mizane. Cascade beyne module-ha ba **integration event** (`PersonnelSoftDeleted`, `SiteSoftDeleted`, …). Unique code-ha ba **partial index** (`WHERE is_deleted = false`) — soft-deleted row code ra blok **nemikone**.
+**Soft delete** yani row az DB **nemire** — faghat flag `IsDeleted = true` (va mamulan `DeletedAt`) set mishe. Query-haye ma'muli automatic `WHERE is_deleted = false` mibinan, chon EF **global query filter** mizare. Delete-e domain method-e `SoftDelete()`-e ke flag ra set mikone va domain event raise mikone — na `DbSet.Remove`.
+
+To Dejban, cascade beyne module-ha ba **integration event** anjam mishe (`PersonnelSoftDeleted`, `SiteSoftDeleted`, …). Unique code-ha (national code, …) ba **partial index** (`WHERE is_deleted = false`) tarif shodan: soft-deleted row digar code ra **blok nemikone**, pas mituni dobare hamin code ra create koni. Day 16 (tenant filter) ba in joft mishe — do filter-e joda.
 
 ---
 
@@ -14,41 +16,47 @@ Soft delete = row **nemire** az DB; flag `IsDeleted = true` (+ `DeletedAt`). Que
 
 ## Hard vs Soft vs Archive
 
+Se rah baraye «hazf» to product-ha:
+
 | style | chi mishe | SQL | recover |
 |---|---|---|---|
 | **Hard delete** | row miravad | `DELETE FROM ...` | backup / audit only |
 | **Soft delete** | flag | `UPDATE ... SET is_deleted = true` | `Restore()` possible |
 | **Archive / temporal** | move ya history table | insert archive + delete/flag | explicit |
 
-**Soft delete** baraye master data (personnel, site, visitor, vehicle) common-e: audit, undo, FK integrity, «dobare hamin national code».
+**Soft delete** baraye master data (personnel, site, visitor, vehicle) common-e: audit, undo, FK integrity, va reuse-e «dobare hamin national code».
 
-**Hard delete** baraye:
-- join/link tables (assignment, inbox consumer)
-- PII purge / GDPR «right to be forgotten» (sometimes hard after soft)
+**Hard delete** ja-hayi ke soft ma'ni nadare:
+
+- join/link tables (assignment, inbox consumer) — row-e link «baiyghani» ma'ni nadare
+- PII purge / GDPR «right to be forgotten» (gahi soft ba'd hard)
 - high-volume logs (optional retention job)
 
 ---
 
 ## Chera soft delete?
 
-1. **Accident recovery** — user ghalat delete → restore
-2. **Audit / legal** — «ki key delete kard?»
-3. **Referential integrity** — child rows + history nemishe yekja hard-delete
-4. **Business reuse** — national code after soft-delete again creatable (partial unique)
-5. **Cross-module sync** — event: digar module-ha copy-ha ra soft-delete konan
+Business chera soft mikhad?
 
-**Gheymat:**
-- har query bayad filter konad (ya global filter)
+1. **Accident recovery** — user ghalat delete → restore momken-e.
+2. **Audit / legal** — «ki key delete kard?» bayad javab dashte bashe.
+3. **Referential integrity** — child rows + history nemishe yekja hard-delete kard.
+4. **Business reuse** — national code ba'd az soft-delete dobare creatable (partial unique).
+5. **Cross-module sync** — event: digar module-ha copy-ha ra soft-delete konan.
+
+**Gheymat-esh** ham real-e — nabayad ignore she:
+
+- har query bayad filter konad (ya global filter) — faramosh = deleted «zende» mibine
 - table bozorg mishe (deleted rows mimunan)
 - unique / FK design harder
 - report-ha bayad decide konand: include deleted ya na
-- `IgnoreQueryFilters` = risk-e bug (deleted data «zende» mibine)
+- `IgnoreQueryFilters` = risk-e bug (tenant + soft-delete filter hardoon miran)
 
 ---
 
 ## Soft delete to product / UX
 
-User «Delete» mizane — mentally expect «raft». Backend soft mikone. Implications:
+User «Delete» mizane — mentally expect «raft». Backend soft mikone. In gap bayad manage she:
 
 | UX expectation | Backend reality | chejori manage |
 |---|---|---|
@@ -58,6 +66,7 @@ User «Delete» mizane — mentally expect «raft». Backend soft mikone. Implic
 | Same code re-register | partial unique allows | show success create |
 
 API design choice:
+
 - `DELETE` → soft (REST-ish common in enterprise)
 - `POST /personnels/{id}/soft-delete` → explicit
 - `PATCH { "isDeleted": true }` → **avoid** (anemic, bypasses domain)
@@ -75,7 +84,8 @@ Dejban: command `DeletePersonnel` → SoftDelete domain — HTTP verb often DELE
 [Active] --Remove()--> [Gone]        // accident path — avoid
 ```
 
-EmploymentStatus (Active/Terminated/…) **orthogonal**:
+EmploymentStatus (Active/Terminated/…) **orthogonal**-e — ba soft-delete ghat nist:
+
 - Terminated + not soft-deleted = still in lists, business inactive
 - Soft-deleted = hidden from normal queries regardless of employment status
 
@@ -93,6 +103,7 @@ CREATE INDEX ix_personnels_deleted
 Live queries rarely need `is_deleted` index — filter removes them early; selective enough with site_id indexes.
 
 Composite thinking:
+
 - `(site_id)` for tenant lists
 - unique `(national_code) WHERE NOT is_deleted`
 - FK Restrict on Site/Unit → cannot hard-delete parent while children exist (soft parent first)
@@ -101,7 +112,8 @@ Composite thinking:
 
 ## Concurrency
 
-Two admins delete same personnel:
+Do admin yek personnel ra delete mikonan:
+
 1. Both GetAsync succeed (not deleted yet)
 2. Both SoftDelete — second idempotent: after first SaveChanges, second Get may NotFound; if same tracked instance, second SoftDelete early-returns before Raise → **one** domain event. Good.
 
@@ -114,7 +126,8 @@ Restore vs recreate race: Restore old row + Create new same national → unique 
 Log/enrich: `PersonnelId`, `SiteId`, `DeletedBy`, soft-delete flag. Metric per module. Trace: domain event → outbox → consumer.
 
 Security:
-- Soft-deleted rows still **PII** in DB/backups
+
+- Soft-deleted rows still **PII** in DB/backups — soft ≠ purge
 - Restore authorization ≥ Delete
 - IgnoreQueryFilters admin APIs = high privilege
 - Exports default-exclude deleted
@@ -163,14 +176,14 @@ public class Customer : ISoftDeletable
 
 ## Global query filter (EF Core)
 
-Bedune filter:
+Bedune filter, har developer bayad dasti filter bezane — yek faramoshi = bug:
 
 ```csharp
 await db.Customers.Where(c => !c.IsDeleted).ToListAsync();
 // har query dasti — faramosh = bug
 ```
 
-Ba filter:
+Ba filter, SQL automatic `AND is_deleted = false` midahad:
 
 ```csharp
 modelBuilder.Entity<Customer>()
@@ -301,6 +314,8 @@ Status = business lifecycle. Soft delete = persistence concern («deleted from s
 
 ## Chizaei ke to donya hastan vali inja kam/nist
 
+Donya in option-ha ra ham dare; Dejban kamtar ya partial:
+
 - **EF soft-delete interceptor** automatic on `Remove()` → SoftDelete (Dejban explicit method)
 - **Temporal tables** (SQL Server) / Postgres system versioning
 - **Hard purge job** scheduled (retention policy)
@@ -310,6 +325,8 @@ Status = business lifecycle. Soft delete = persistence concern («deleted from s
 ---
 
 # BAKHSH-E DOVOM: DEJBAN — Soft Delete to in proje
+
+Soft delete to Dejban **shared convention**-e: marker `ISoftDeletable` to `Common.Tenancy`, named global filter `SoftDeleteFilter`, va method-e domain `SoftDelete()` / `Restore()`. Har module ke master data dare (Personnels, Visitors, Vehicles, …) hamin olgu ra follow mikone. Cascade beyne schema-ha ba integration event miravad — na FK cascade hard.
 
 ## Marker: `ISoftDeletable`
 

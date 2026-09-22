@@ -4,26 +4,25 @@
 
 ---
 
-## In ruz chie?
+## Ye khat kholase
 
-In **Day Zero**-e. Code-e ghabl nist. Hadaf: **hang nakoni**.
+**Day Zero** code-e jadid yad nemide; hadafesh in-e ke **hang nakoni**. Ghabl az inke YARP, MassTransit, outbox, ya JWT ra pechide bekhooni, bayad beduni Dejban **chi kar** mikone (business), code **koja** zendegi mikone (repo map), ye request **chejori** az browser ta Postgres miravad, va in ketabche-ha ra **chejori** bekhooni ta tartib-e fehrest ma'ni dashte bashe.
 
-Ghabl az tech-e jadid:
-1. beduni proje **chi kar** mikone (business)
-2. beduni code **koja** zendegi mikone (map)
-3. beduni ye request **chejori** az browser ta DB miravad
-4. beduni chejori in ketabche-ha ra bekhooni
-5. beduni **tartib-e motale'e** chera injori-e
+Age mostaghim az gateway ya messaging shoru' koni bedune in naghshe, maghzat por mishe va hang. In ruz ye tasvir-e zehni mide: platform-e multi-site amniat/dastresi, modular monolith + microservice, va zincire-ye request → Gateway → MediatR → DB (± event). Ba'd az in, Day 01 be ba'd har tech ra ru hamin naghshe pin mikoni.
 
-Age faghat az YARP ya MassTransit shoru' koni bedune in map → maghzat por mishe va hang.
+---
+
+# BAKHSH-E AVAL: WORLD — orientation chera lazeme
+
+## Chera ghabl az tech, map?
+
+To donya-ye enterprise, «orientation» yani ghabl az deep-dive, boundary-ha, entry point-ha, va glossary ra beduni. Inja faghate tooling nist — ye system-e vaghe'i ba chand DB, chand process, va multi-tenant site-ha. Bedune map, har file-e DEJBAN mesle joz'i az puzzle-e bi-frame mimanad.
 
 ---
 
 ## 1) Business — Dejban chie?
 
-**Dejban** = platform-e amniat / dastresi / traffic baraye site-ha (karkhane, edare, padegan, …).
-
-Domain-haye asli:
+**Dejban** platform-e amniat / dastresi / traffic baraye site-ha-st (karkhane, edare, padegan, …). Yani ye product nist ke faghat CRUD dashte bashe; domain-haye asli-ash inha-and:
 
 | domain | chi |
 |---|---|
@@ -38,11 +37,13 @@ Domain-haye asli:
 | **DCC** | file / document storage |
 | **Reporting** | Stimulsoft report |
 
-**Multi-site:** har user mitone chand site dashte bashe. Header `X-Site-Id` + JWT claims.
+**Multi-site:** har user mitone chand site dashte bashe. Scope-e request az header `X-Site-Id` + JWT claims miad — Day 16 in ra deep mikone; inja faghat bedun ke «tenant» = site.
 
 ---
 
 ## 2) Repo map — 3 folder
+
+Workspace-e ma se folder-e asli dare. Har kodam ye maghsad-e joda dare:
 
 ```
 D:\Dezhban\
@@ -52,6 +53,8 @@ D:\Dezhban\
 ```
 
 ### Backend — chi kojast?
+
+Backend ye solution-e bozorg-e: Gateway vorudi-ye yekta-st, Common shared library-ha ra negah midare, va Microservices process-haye joda (ya modular monolith) ra darad:
 
 ```
 dejban_backend_new\
@@ -81,13 +84,15 @@ dejban_backend_new\
     └── *GrpcServer\         ← ZK / Tiam / Virdi adapters
 ```
 
-Har Dejban module:
+Har Dejban module hamin layering ra follow mikone:
 
 ```
 Domain → Application → Infrastructure → Presentation (+ IntegrationEvents)
 ```
 
 ### Frontend — chi kojast?
+
+Frontend Turborepo-st: app-ha Next.js-and, shared logic to packages miravad:
 
 ```
 dejban_frontend_new\
@@ -104,6 +109,8 @@ dejban_frontend_new\
 ---
 
 ## 3) Request lifecycle — yek tasvir dar zehenet
+
+In diagram zincire-ye **sync** ra neshan mide. Har bar ke debug mikoni, az hamin hop-ha so'al kon:
 
 ```
 Browser (Next.js)
@@ -126,10 +133,11 @@ PostgreSQL (schema ya DB-e service)
   └─ async: MassTransit → RabbitMQ → digar service-ha / inbox
 ```
 
-**Hamishe az in zincire so'al kon:**  
-Request kojast? Auth shode? Tenant chie? Command ya Query? SaveChanges? Event?
+**Hamishe az in zincire so'al kon:** Request kojast? Auth shode? Tenant chie? Command ya Query? SaveChanges? Event?
 
 ### Lifecycle — ghanj (har hop chi check mikone)
+
+Jadval-e zir haman diagram ra ba masooliat va tip-e debug gostar midahad. Sync path = hop 1→9 to haman request; async path = hop 10 ba'd az commit (eventual consistency baraye read-model copy-ha).
 
 | # | hop | masool | tip |
 |---|---|---|---|
@@ -144,13 +152,13 @@ Request kojast? Auth shode? Tenant chie? Command ya Query? SaveChanges? Event?
 | 9 | DB | Postgres | schema module (masalan `personnels.*`) |
 | 10 | Async | Quartz + MT | publish integration event → consumer/inbox digar module |
 
-**Sync path:** 1→9 hamon request. **Async path:** 10 ba'd az commit — eventual consistency baraye read-model copy-ha.
-
 **Debug checklist:** Gateway 401? → JWT/blacklist. 403? → claim/permission. 404 list? → soft-delete filter ya tenant. Data ghabli to module digar? → inbox/outbox lag.
 
 ---
 
 ## 4) Do architecture — na inke hame microservice-e
+
+In fargh ra zud yad begir — hang-e bozorg az inja miad. Dejban.Api **modular monolith**-e (chand module, yek process, yek Postgres ba chand schema). Identity / ACL / DCC / … **microservice**-an (process va DB joda).
 
 | | Dejban.Api | Identity / ACL / DCC / … |
 |---|---|---|
@@ -160,11 +168,13 @@ Request kojast? Auth shode? Tenant chie? Command ya Query? SaveChanges? Event?
 | API | Minimal API (`IEndpoint`) | Controllers |
 | events | custom outbox + Dapper jobs | MassTransit EF Outbox |
 
-In fargh ra zud yad begir — hang-e bozorg az inja miad.
+Cross-service = **event** (na FK cross-DB). Dakhele Dejban = schema joda + copy read-model. Detail to Day 09.
 
 ---
 
 ## 5) Glossary — 30 kalame ke bayad beduni
+
+In jadval dictionary-e kootah-e — age yeki ra nafahmidi, fehrest README → ruz-e marbut. Hadaf: ba’dan to WORLD/DEJBAN aslan hang nakoni.
 
 | kalame | ma'ni-ye kootah |
 |---|---|
@@ -259,8 +269,8 @@ Har ruz ke `—` bashe = hanuz neveshte nashode; bego ta benevisam.
 
 ## 8) To koja hasti?
 
-Amade: **00–20**, **59**.  
-Avalin khali: **Day 21 — Transactional Outbox (custom Dejban)**.
+Amade: **00–34**, **59**.  
+Avalin khali: **Day 35 — Factory + Strategy (device sync)**.
 
 ---
 
@@ -278,31 +288,31 @@ Age 5 ta tik khord → boro Day 01 (ya avalin ruz-e khali ke mikhay).
 
 ## 10) Tamrin-e 30 daghighe (bedune code zadan)
 
+Hadaf: **jahat**, na mastery. Faghat in 5 file ra baz kon va jahat ra hes kon:
+
 1. `ApiGateway/Program.cs` ra baz kon — faghat `Use*` ha ra bebin
 2. `Dejban.Api/Program.cs` — `AddVisitorsModule` va `MapEndpoints`
 3. ye endpoint to Visitors Presentation — `ISender.Send`
 4. ye command handler — `SaveChanges`
 5. `docker-compose.yml` — esm-e service-ha (db, redis, eventbus, minio)
 
-Hadaf: **jahat**, na mastery.
-
 ---
 
 ## 11) Service map — har service chi kar mikone?
 
-In jadval **orientation**-e — detail to ruz-haye 06–20. Duplicate nakon; faghat « koja beram? ».
+In jadval **orientation**-e — detail to ruz-haye 06–20. Duplicate nakon; faghat «koja beram?» ra javab mide.
 
 | service | vorudi | DB / storage | async | ruz-e asli |
 |---|---|---|---|---|
 | **ApiGateway (YARP)** | `:7036` HTTPS | — | — | [07](./day-07-yarp.md), [08](./day-08-system-design.md) |
 | **Dejban.Api** | `/api/dejban/...` | `payamgostar_dejban` — 8 schema | custom outbox/inbox + Quartz | [09](./day-09-microservices-modular-monolith-ddd.md)–[19](./day-19-dapper-outbox-inbox.md) |
 | **IdentityServer** | login, user, role, site claim | `payamgostar_identity` | MassTransit outbox | [06](./day-06-jwt-token-blacklist.md), [36–37 khali] |
-| **ACLServer** | device, door, ACL user, access log | `payamgostar_aclserver` | MT consumers + gRPC client | [27 khali], [20](./day-20-masstransit-rabbitmq.md) |
+| **ACLServer** | device, door, ACL user, access log | `payamgostar_aclserver` | MT consumers + gRPC client | [27](./day-27-grpc-zk-tiam-virdi.md), [20](./day-20-masstransit-rabbitmq.md) |
 | **DCC** | upload/download file, presign | `payamgostar_dcc` + **MinIO** | MT | [28 khali], [41 khali] |
 | **RequestTracker** | cartable, workflow, approve | `payamgostar_requesttracker` | MT + **Hangfire** | [29 khali] |
 | **Reporting** | Stimulsoft report, ticket | `payamgostar_reporting` + read Dejban schemas | kam | [39 khali] |
 | **GateServer** | kiosk / gate relay | `payamgostar_gateserver` | — | — |
-| **ZK/Tiam/Virdi gRPC** | device SDK | — (state local) | stream log/event | [27 khali] |
+| **ZK/Tiam/Virdi gRPC** | device SDK | — (state local) | stream log/event | [27](./day-27-grpc-zk-tiam-virdi.md) |
 
 **Dejban modules (1 process):** Visitors, Personnels, Vehicles, Armory, CashLogistics, Inventory, SecurityPatrols, WeighBridge — har kodam schema + DbContext joda.
 
@@ -311,6 +321,8 @@ In jadval **orientation**-e — detail to ruz-haye 06–20. Duplicate nakon; fag
 ---
 
 ## 12) Fehrest ruz 01–20 — che ruz chi?
+
+Motale'e pishnahadi: hafte 1 → 00–07. hafte 2 → 08–14. hafte 3 → 15–20. ba'd 21+ (outbox/inbox deep).
 
 | ruz | file | yad begir |
 |---|---|---|
@@ -335,11 +347,11 @@ In jadval **orientation**-e — detail to ruz-haye 06–20. Duplicate nakon; fag
 | 19 | [Dapper outbox/inbox](./day-19-dapper-outbox-inbox.md) | hot path SQL jobs |
 | 20 | [MassTransit](./day-20-masstransit-rabbitmq.md) | RabbitMQ, consumer |
 
-**Motale'e pishnahadi:** hafte 1 → 00–07. hafte 2 → 08–14. hafte 3 → 15–20. ba'd 21+ (outbox/inbox deep).
-
 ---
 
 ## 13) File map — repo (faghat landmark)
+
+Az Day 00 faghat **5 file** baz kon (tamrin-e bala) — ba'd har ruz 3–5 file jadid to DEJBAN section. Inha landmark-ha-ye bakhshe:
 
 ### Backend (`dejban_backend_new`)
 
@@ -369,19 +381,17 @@ In jadval **orientation**-e — detail to ruz-haye 06–20. Duplicate nakon; fag
 | Feature sections | `apps/dejban/src/sections/<feature>/` |
 | Services (HTTP) | `apps/dejban/src/services/<feature>/` |
 
-**Tip:** az Day 00 faghat **5 file** baz kon (tamrin-e bala) — ba'd har ruz 3–5 file jadid to DEJBAN section.
-
 ---
 
 ## 14) Motale'e — 3 mode
+
+Se mode-ye motale'e darim. Hang = signal: ziad parallel nakhoon. Yek ruz, yek file. PDF/export: Markdown viewer ya print — folder `learning` joda az git app repo-ha.
 
 | mode | vaght | chi |
 |---|---|---|
 | **Skim** | 20 min | WORLD faghat — concept |
 | **Deep** | 60–90 min | WORLD + DEJBAN + 1 trace to IDE |
 | **Review** | 15 min | Resume + soal-ha payan-e file |
-
-**Hang = signal:** ziad parallel nakhoon. Yek ruz, yek file. PDF/export: Markdown viewer ya print — folder `learning` joda az git app repo-ha.
 
 ---
 

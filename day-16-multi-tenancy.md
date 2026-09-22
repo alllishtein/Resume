@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-Multi-tenancy to Dejban = **izolasyon bar asase Site (markaz / padegan / project)**. User JWT claim-e `site` dare (list-e site-hayi ke ejaze dare). UI site-e selected ra to Zustand + localStorage negah midare va har API call header **`X-Site-Id`** mifreste. Middleware az JWT + header → `TenantContext` (AsyncLocal) misaze. Har `DbContext` ke `ITenantDbContext` hast, EF **named global query filter** `TenantFilter` mizare: `SiteId IN TenantIds` — magar SuperAdmin bedune site select → hame. Hamin context to **MassTransit headers** va **Outbox/Inbox** ham propagate mishe ta background job-ha ham filter ra dorost dashte bashan. Soft-delete (Day 15) + tenant = **do filter-e joda**; `IgnoreQueryFilters()` bedune re-check = **tenant leak**.
+**Multi-tenancy** yani yek software, chand mostajar — data-ha bayad joda bashan. To Dejban tenant = **Site** (markaz / padegan / project). User to JWT claim-e `site` dare (list-e site-hayi ke ejaze dare). UI site-e selected ra to Zustand + localStorage negah midare va har API call header **`X-Site-Id`** mifreste.
+
+Middleware az JWT + header → `TenantContext` (AsyncLocal) misaze. Har `DbContext` ke `ITenantDbContext` hast, EF **named global query filter** `TenantFilter` mizare: `SiteId IN TenantIds` — magar SuperAdmin bedune site select → hame. Hamin context to **MassTransit headers** va **Outbox/Inbox** ham propagate mishe ta background job-ha ham filter ra dorost dashte bashan. Soft-delete (Day 15) + tenant = **do filter-e joda**; `IgnoreQueryFilters()` bedune re-check = **tenant leak**.
 
 ---
 
@@ -14,14 +16,13 @@ Multi-tenancy to Dejban = **izolasyon bar asase Site (markaz / padegan / project
 
 ## Multi-tenancy chie?
 
-Yek software, **chand mostajar (tenant)** — data-ha bayad joda bashan.
+Yek software, **chand mostajar (tenant)** — data-ha bayad joda bashan. Tenant ≠ User. Tenant = **boundary-e data**. User mitone be chand tenant access dashte bashe (multi-site user).
 
 Mesal-ha:
+
 - SaaS: har company = tenant
 - Hospital chain: har hospital = tenant
 - **Dejban:** har **Site** (markaz / padegan / contractor site) = tenant scope
-
-Tenant ≠ User. Tenant = **boundary-e data**. User mitone be chand tenant access dashte bashe (multi-site user).
 
 ---
 
@@ -41,13 +42,15 @@ Modular monolith Dejban = 8 schema (Personnels, Visitors, …) dar **yek** DB. T
 
 ## Chera multi-tenancy sakht-e?
 
-1. **Yek faramoshi** (`WHERE site_id = …`) = leak be tenant digar — amniati / hoghughi
-2. **Background jobs** HttpContext nadaran — context bayad **serialize** she
-3. **SuperAdmin** gahi hame site, gahi yek site — logic dual
-4. **Cross-tenant report** — intentional override ba auth ghavi
-5. **Messaging** — consumer bayad haman tenant scope-e publisher ra dashte bashe
-6. **Cache keys** — Redis key bedune siteId = cross-tenant pollution
-7. **Unique indexes** — often per-tenant (`(SiteId, AccessCode)` unique)
+In domain jaye «yek bug = leak amniati»-e:
+
+1. **Yek faramoshi** (`WHERE site_id = …`) = leak be tenant digar — amniati / hoghughi.
+2. **Background jobs** HttpContext nadaran — context bayad **serialize** she.
+3. **SuperAdmin** gahi hame site, gahi yek site — logic dual.
+4. **Cross-tenant report** — intentional override ba auth ghavi.
+5. **Messaging** — consumer bayad haman tenant scope-e publisher ra dashte bashe.
+6. **Cache keys** — Redis key bedune siteId = cross-tenant pollution.
+7. **Unique indexes** — often per-tenant (`(SiteId, AccessCode)` unique).
 
 Interview: «chejori guarantee mikoni developer faramosh nakone?» → **global query filter** + tests + code review + (ideally) integration tests ba 2 tenant.
 
@@ -102,6 +105,7 @@ Enterprise SaaS. Dejban nist.
 | **API key** | mapped to tenant |
 
 **Dejban hybrid:**
+
 - JWT `site` claims = **allowed** sites (identity)
 - Header `X-Site-Id` = **selected** working site(s) (UI choice)
 - Effective = intersection (ya SuperAdmin override)
@@ -110,9 +114,7 @@ Enterprise SaaS. Dejban nist.
 
 ## SuperAdmin / God mode
 
-Har multi-tenant system ye «didan-e hame» mikhad.
-
-Pattern-haye common:
+Har multi-tenant system ye «didan-e hame» mikhad. Pattern-haye common:
 
 ```
 IF SuperAdmin AND no site selected → no SiteId filter (see all)
@@ -128,7 +130,7 @@ In exact-e Dejban-e (`BuildScopedTenantPredicate`).
 
 ## Multi-site user
 
-User mitone be Site A va B access dashte bashe.
+User mitone be Site A va B access dashte bashe:
 
 ```
 JWT sites: [A, B]
@@ -144,6 +146,8 @@ Ya UI faghat yek select mikone (Dejban FE currently **slice(0,1)** — backend m
 ---
 
 ## Tenant + Soft delete (do filter)
+
+Do filter **jodagan** AND mishan:
 
 ```sql
 SELECT * FROM personnels
@@ -172,7 +176,7 @@ ACL DeviceSyncRepository in pattern ra dare — **faghat TenantFilter** ignore, 
 
 ## Tenant propagation beyond HTTP
 
-HTTP request AsyncLocal set mikone. Vali:
+HTTP request AsyncLocal set mikone. Vali path-haye digar HttpContext nadaran:
 
 | path | problem | solution |
 |---|---|---|
@@ -202,6 +206,8 @@ Dejban: `SiteAccessAuthorizationHandler` check mikone header sites ⊆ user site
 ---
 
 ## Anti-patterns
+
+In-ha ra to review / mosahebe zud flag kon:
 
 1. **Trust client SiteId blindly** bedune intersect ba JWT — spoof
 2. **Cache without site in key** — `personnel:123` vs `personnel:{site}:123`
@@ -245,6 +251,8 @@ Integration test ba Testcontainers + 2 tenants = resume gold.
 
 # BAKHSH-E DOVOM: DEJBAN — Multi-tenancy to in proje
 
+Pipeline-e Dejban injuri-e: FE site select → axios `X-Site-Id` → YARP → middleware `TenantContext` → EF `TenantFilter`. Outbox/Inbox ham SiteIds ra persist mikonan ta Quartz job-ha filter ra gom nakonan. Diagram-e zir ra **blackboard** kon — mosahebe.
+
 ## Big picture — request lifecycle
 
 ```
@@ -281,8 +289,6 @@ Integration test ba Testcontainers + 2 tenants = resume gold.
 
 [finally middleware] TenantContextAccessor.Clear()
 ```
-
-In diagram ra **blackboard** kon — mosahebe.
 
 ---
 

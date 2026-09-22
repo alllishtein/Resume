@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-System design yani "in system ra chejori misazi ke scale kone, down nayre, va fast bashe?" Interview-e senior jaye in soal-e: "Design a URL shortener" ya "Design a chat system." Vali ghabl az in ke system-e dige-i design koni, bayad betuni system-e **khodet** ra tozih bedi. In fasl hame-ye component-haye Dejban stack ra az did-e system design mibine: API Gateway, 7 microservice, modular monolith, async messaging, caching, storage, observability, deployment. Ba'd concept-haye World ra yad migiri ke to mosahebe betuni harf bezani.
+**System design** yani: in system ra chejori misazi ke scale kone, down nayre, va fast bashe? Interview-e senior jaye in soal-e ("Design a URL shortener", "Design a chat system"), vali ghabl az inke system-e digari design koni, bayad betuni system-e **khodet** ra ba zaban-e box-and-arrow tozih bedi: requirement → high-level → deep dive → tradeoff.
+
+In fasl hame-ye component-haye Dejban stack ra az did-e system design mibine: API Gateway (YARP), 7 microservice, modular monolith, async messaging (MassTransit/RabbitMQ), caching (Redis), storage (Postgres + MinIO), observability (Serilog/OTel), va deployment. Ba'd concept-haye World (CAP, consistency, scale, cache) ra yad migiri ke to mosahebe betuni harf bezani — na faghat "chi sakhtim", balke "chera injoori."
 
 ---
 
@@ -14,15 +16,16 @@ System design yani "in system ra chejori misazi ke scale kone, down nayre, va fa
 
 ## Chera system design mohem-e?
 
-Senior interview 2 bakhsh dare: coding + system design. Coding mige "mituni code bezani?" System design mige "mituni fikr koni?" Scale, failure, tradeoff, cost — ina ra code-e LeetCode neshun nemide.
+Senior interview ma'mulan 2 bakhsh dare: coding + system design. Coding mige "mituni code bezani?"; system design mige "mituni fikr koni?" Scale, failure, tradeoff, cost — ina ra code-e LeetCode neshun nemide.
 
-Soal-e typical:
+Soal-e typical injuri-an:
+
 - "Design Twitter/Instagram feed"
 - "Design a URL shortener"
 - "Design a chat system"
 - "Design your current system for 10x traffic"
 
-Baraye javab dadan: **requirement** → **high-level design** → **deep dive** → **tradeoff**.
+Baraye javab dadan ye framework-e sade kafi-e: **requirement** → **high-level design** → **deep dive** → **tradeoff**. Harja ke "bale" migi, bayad beduni che chizi az dast midi.
 
 ---
 
@@ -30,16 +33,16 @@ Baraye javab dadan: **requirement** → **high-level design** → **deep dive** 
 
 ### Scalability
 
-System mikhad bishtar traffic handle kone. Do rah:
+System mikhad bishtar traffic handle kone. Do rah-e asli hast:
 
-- **Vertical scaling (scale up)** — server-e bozorg-tar. CPU/RAM bishtar. Sade, vali limit dare va geran-e.
-- **Horizontal scaling (scale out)** — server-e bishtar. Load balancer jelov. Sakht-tar vali unlimited-e.
+- **Vertical scaling (scale up)** — server-e bozorg-tar. CPU/RAM bishtar. Sade-st, vali limit dare va geran-e.
+- **Horizontal scaling (scale out)** — server-e bishtar. Load balancer jelov. Sakht-tar-e, vali ceiling-esh kheili balatar-e.
 
 Stateless service-ha (JWT auth, na session-e server-side) horizontal scale asan-e. Dejban JWT-e → stateless → scale-out mumken.
 
 ### Availability
 
-System che darsad-e vaght bala-st?
+System che darsad-e vaght bala-st? In adad-ha (nines) to mosahebe ziad miad:
 
 | nines | downtime/year |
 |---|---|
@@ -48,7 +51,7 @@ System che darsad-e vaght bala-st?
 | 99.99% (4 nines) | 52.6 daghighe |
 | 99.999% (5 nines) | 5.26 daghighe |
 
-Baraye availability: redundancy (chand instance), failover (automatic switch), health check, graceful degradation.
+Baraye availability: redundancy (chand instance), failover (automatic switch), health check, va graceful degradation (age ye bakhsh down shod, kole system namire).
 
 ### Consistency
 
@@ -64,19 +67,19 @@ Dejban: write-ha strongly consistent (Postgres). Read-model copy-haye beyn-e mod
 - **Latency** — zamaan-e ye request (ms). User experience.
 - **Throughput** — tedad-e request per second. System capacity.
 
-Trade-off: batch processing throughput ra bala mibare, latency ra bala mibare. Real-time latency ra kam mikone, throughput ra kam mikone.
+Trade-off: batch processing throughput ra bala mibare, vali latency ra ham bala mibare. Real-time latency ra kam mikone, vali throughput ra kam mikone. Design yani entekhab koni koja kodom mohem-tar-e.
 
 ---
 
 ## CAP Theorem
 
-Ye distributed system faghat **do ta** az in 3 ta ra mitone:
+Ye distributed system faghat **do ta** az in 3 ta ra mitone ba-ham negah dare:
 
 - **C**onsistency — hame haman data
 - **A**vailability — har request javab migire
 - **P**artition tolerance — network partition ra tahammol mikone
 
-To practice: P hamishe lazem-e (network fail mishe). Pas entekhab beyn-e **CP** (consistency, partition-tolerant — masalan Postgres) va **AP** (available, partition-tolerant — masalan Cassandra).
+To practice: **P** hamishe lazem-e (network fail mishe). Pas entekhab beyn-e **CP** (consistency + partition-tolerant — masalan Postgres) va **AP** (available + partition-tolerant — masalan Cassandra).
 
 Dejban: **CP**. Postgres strongly consistent. Age DB down bashe, service 503/502 mide (na stale data).
 
@@ -88,7 +91,7 @@ Dejban: **CP**. Postgres strongly consistent. Age DB down bashe, service 503/502
 
 ### Synchronous — request/response
 
-Client wait mikone ta server javab bede. HTTP REST, gRPC.
+Client wait mikone ta server javab bede. Do tool-e asli: HTTP REST va gRPC.
 
 | | REST (HTTP) | gRPC |
 |---|---|---|
@@ -103,7 +106,7 @@ Client wait mikone ta server javab bede. HTTP REST, gRPC.
 
 ### Asynchronous — message queue
 
-Producer message mifreste be queue, consumer mikhoone. Producer wait **nemikone**.
+Producer message mifreste be queue; consumer mikhoone. Producer wait **nemikone** — va hamin farq-e asl-e ba sync-e.
 
 | | RabbitMQ | Kafka |
 |---|---|---|
@@ -119,9 +122,10 @@ Producer message mifreste be queue, consumer mikhoone. Producer wait **nemikone*
 
 ## API Gateway pattern
 
-Yek entry point baraye hame-ye service-ha. Client faghat gateway ra midone.
+Yek entry point baraye hame-ye service-ha. Client faghat gateway ra midone — va in yani routing, auth, rate limit, CORS, TLS, logging mitonan yekja bashan.
 
-Masooliat-ha:
+Masooliat-ha-ye ma'mul:
+
 - **Routing** — request be kodom service
 - **Auth** — JWT validation, token revoke
 - **Rate limiting** — per-IP, per-route
@@ -129,13 +133,15 @@ Masooliat-ha:
 - **TLS termination** — HTTPS decode
 - **Logging/monitoring** — trace har request
 
-Alternative-ha: nginx, Envoy, Kong, AWS ALB, YARP.
+Alternative-ha: nginx, Envoy, Kong, AWS ALB, YARP (Day 07).
 
 **BFF (Backend for Frontend)** — gateway-e khaas baraye har client (web, mobile). Gateway-e faghat yek client ra serve mikone va response ra aggregate/transform mikone. Dejban **BFF nist** — transparent proxy-e.
 
 ---
 
 ## Caching strategies
+
+Caching latency ra kam mikone, vali consistency ra sakht mikone. Strategy-ha:
 
 | strategy | chi | che vaght |
 |---|---|---|
@@ -147,6 +153,7 @@ Alternative-ha: nginx, Envoy, Kong, AWS ALB, YARP.
 **Cache invalidation** — "hardest problem in CS." TTL (zamaan-e expire), event-based (write → invalidate), version key.
 
 **Where to cache:**
+
 - **L1 — in-memory** (IMemoryCache, process-level, fast, na shared)
 - **L2 — distributed** (Redis, shared, slower than L1)
 - **HybridCache** (.NET 9+) — L1 + L2. Aval memory, miss → Redis, miss → DB.
@@ -154,6 +161,8 @@ Alternative-ha: nginx, Envoy, Kong, AWS ALB, YARP.
 ---
 
 ## Database choices
+
+Har DB baraye ye job-e khas khoob-e. Polyglot persistence yani "har use case DB-e khodesh":
 
 | type | mesal | khoob baraye |
 |---|---|---|
@@ -166,17 +175,13 @@ Alternative-ha: nginx, Envoy, Kong, AWS ALB, YARP.
 | Search | Elasticsearch | full-text search, logs |
 | Time-series | TimescaleDB, InfluxDB | metrics, IoT |
 
-**Polyglot persistence** — har use case DB-e khodesh:
-- Transactions → Postgres
-- Cache → Redis
-- Files → MinIO/S3
-- Events → RabbitMQ (va eventually Kafka baraye replay)
+To Dejban: transactions → Postgres; cache → Redis; files → MinIO; events → RabbitMQ (va eventually Kafka baraye replay, age lazem she).
 
 ---
 
 ## Event-driven architecture
 
-Service-ha mostaghim sohbat nakonan. Event publish mikonan, interested party-ha subscribe.
+Service-ha mostaghim sohbat nakonan. Event publish mikonan; interested party-ha subscribe. In loose coupling mide, vali eventual consistency va debugging-e sakht miad.
 
 ```
 PersonnelService → "PersonnelCreated" → RabbitMQ → VisitorService (copy read-model)
@@ -200,11 +205,13 @@ PersonnelService → "PersonnelCreated" → RabbitMQ → VisitorService (copy re
 | network | na | bale (latency, failure) | na (in-process) |
 | scale | kole app | per-service | kole app (ya split later) |
 
-**Modular monolith** = best of both: module boundary-e tight (mesle microservice), deploy-e sade (mesle monolith), split-e ba'di asan.
+**Modular monolith** = best of both: module boundary-e tight (mesle microservice), deploy-e sade (mesle monolith), split-e ba'di asan. Detail-e architecture = Day 09.
 
 ---
 
 ## Observability — 3 pillar
+
+Bedune observability, production = black box. Se pillar:
 
 | pillar | chi | tool |
 |---|---|---|
@@ -229,7 +236,8 @@ PersonnelService → "PersonnelCreated" → RabbitMQ → VisitorService (copy re
 7. **Design a search engine** — inverted index, ranking, autocomplete
 8. **Design an e-commerce checkout** — payment, inventory lock, saga
 
-**Framework baraye javab:**
+**Framework baraye javab** — hamin tartib ra hefz kon:
+
 1. **Requirements** — functional + non-functional (scale, latency, availability)
 2. **Estimation** — users, requests/sec, storage, bandwidth
 3. **High-level** — boxes + arrows (client, LB, service, DB, cache, queue)
@@ -239,6 +247,8 @@ PersonnelService → "PersonnelCreated" → RabbitMQ → VisitorService (copy re
 ---
 
 ## Chizayi ke to donya hastan vali inja kam/nistan
+
+In list baraye mosahebe va resume-e honest-e — bedun ke chi **nadari**, resume dorough nemishe:
 
 - **CDN** (Content Delivery Network) — static asset-ha (JS, CSS, image) ra nazdik-e user cache kon. CloudFront, Cloudflare.
 - **Service mesh** (Istio, Linkerd) — sidecar proxy baraye mTLS, traffic control, observability. Kubernetes-native.
@@ -256,6 +266,7 @@ PersonnelService → "PersonnelCreated" → RabbitMQ → VisitorService (copy re
 
 ## Architecture overview
 
+Inja hame-ye box-ha-ye Day 07–09 ra ba-ham mibini: client → Gateway / gRPC → service-ha → Postgres / Redis / MinIO / RabbitMQ. Hadaf: betuni in diagram ra to whiteboard 15 daghighe tozih bedi.
 ```
 ┌─────────────────────────────────────────────────────┐
 │                    CLIENTS                           │

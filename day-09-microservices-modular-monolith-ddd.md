@@ -6,13 +6,17 @@
 
 ## Ye khat kholase
 
-Architecture-e ye system = chejori code ra split mikoni, chejori deploy mikoni, va chejori service-ha ba ham sohbat mikonan. Dejban **do ta** architecture dare: **modular monolith** (8 module to yek process) + **microservices** (7 ta service-e joda). In fasl tozih mide chera in entekhab shode, DDD layering chejori enforce mishe, va boundary-ha chejoori hefz mishan.
+**Architecture** yani: code ra chejori split mikoni, chejori deploy mikoni, va service-ha chejori ba ham sohbat mikonan. Se style-e asli hast — monolith, microservices, modular monolith — va harkodom trade-off-e khodesh dare. Clean Architecture + DDD layering migan dependency-ha bayad be samte Domain bashan, na bar'aks.
+
+Dejban **do ta** architecture dare: **modular monolith** (8 module to yek process, 1 DB, N schema) + **microservices** (7 ta service-e joda posht-e Gateway). In fasl tozih mide chera in entekhab shode, DDD layering chejori enforce mishe, outbox/inbox chejori boundary ra hefz mikone, va koja smell / boundary violation hast.
 
 ---
 
 # BAKHSH-E AVAL: WORLD — Architecture + DDD to donya
 
 ## 3 architecture style
+
+Ghabl az inke "microservice khoob-e" ya "monolith bad-e" begi, bayad beduni har style che problem-i ra hal mikone va che dard-e sari miad.
 
 ### 1. Monolith
 
@@ -90,7 +94,7 @@ Har domain/feature ye **service-e joda** ba **DB-e joda** va **deploy-e joda**.
 
 ## Clean Architecture
 
-Uncle Bob (Robert C. Martin) — layer-ha az birun be darun depend mikonan, na bar'aks.
+Uncle Bob (Robert C. Martin) — layer-ha az birun be darun depend mikonan, na bar'aks. Hadaf: Domain az framework, DB, va UI azad bashe ta business rule zood taghir nakone.
 
 ```
 ┌─────────────────────────────────┐
@@ -108,6 +112,7 @@ Uncle Bob (Robert C. Martin) — layer-ha az birun be darun depend mikonan, na b
 ```
 
 **Dependency Rule:** Dependencies FAGHAT be samte darun:
+
 - Domain → hichchi (pure, no dependency)
 - Application → Domain
 - Infrastructure → Application + Domain
@@ -118,6 +123,8 @@ Uncle Bob (Robert C. Martin) — layer-ha az birun be darun depend mikonan, na b
 ---
 
 ## DDD — Domain-Driven Design
+
+DDD do sath dare: strategic (chejori system ra tekke mikoni) va tactical (chejori code ra misazi).
 
 ### Strategic DDD (high-level)
 
@@ -149,18 +156,22 @@ Uncle Bob (Robert C. Martin) — layer-ha az birun be darun depend mikonan, na b
 3. One transaction = one aggregate (ya saga baraye cross-aggregate)
 4. Small aggregates preferred — na 100 entity to yek aggregate
 
+Detail-e tactical (Entity / VO / Event) = Day 12.
+
 ---
 
 ## Outbox / Inbox Pattern (overview)
 
-Cross-boundary communication reliable nabud: entity save shod, event send nashod = inconsistency.
+Cross-boundary communication reliable nabud: entity save shod, event send nashod = inconsistency. Outbox/Inbox in gap ra mibande.
 
 **Outbox:**
+
 1. Entity save + event insert → **same transaction**
 2. Background job → read outbox → publish to queue
 3. Mark as processed
 
 **Inbox:**
+
 1. Consumer receives from queue → insert to inbox table
 2. Background job → read inbox → process handler
 3. Idempotent: duplicate message = skip
@@ -176,17 +187,20 @@ Module A                    RabbitMQ              Module B
 
 ---
 
-## CQRS kholase (detail = Day 11)
+## CQRS kholase (detail = Day 10)
 
 **Command Query Responsibility Segregation:**
+
 - **Command** → write (change state). Return success/error.
 - **Query** → read (no side effect). Return data.
 
-Separate model baraye read va write. Write model rich (domain logic). Read model optimized (flat DTO, denormalized).
+Separate model baraye read va write. Write model rich (domain logic). Read model optimized (flat DTO, denormalized). Dejban Level 1 CQRS dare — same DB, vali type system joda.
 
 ---
 
 ## Chizaei ke to donya hastan vali inja kam/nistan
+
+In list baraye resume-e honest-e — chi **hast** to donya, vali to Dejban kam/nist:
 
 - **Explicit Aggregate Root** base class — Dejban `Entity` dare, `AggregateRoot` nadare
 - **Specification pattern** — query builder encapsulated. Dejban repository method per query
@@ -205,8 +219,7 @@ Separate model baraye read va write. Write model rich (domain logic). Read model
 
 ## Hybrid architecture
 
-Dejban ye **hybrid**-e: modular monolith + microservices.
-
+Dejban ye **hybrid**-e: modular monolith + microservices. Chera? Domain-haye asli (Visitors, Personnels, Vehicles, …) boundary-e module mikhan vali deploy-e joda nemikhan; Identity / ACL / DCC / tickets deploy-e joda va scale-e joda mikhan.
 ```
                     ┌─────────────────────────────┐
                     │       Dejban.Api             │

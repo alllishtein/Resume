@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-Har chizi ke to in system etefagh miofte, ye HTTP request-e. Browser ye request mizane, server ye response mide. Method + path mige chi mikhay, header-ha context mibaran (ki-i, kodom site, che zabani), body payload-e, status code natije ra mige. REST ye set ghanun-e ke mige resource-ha ra ba method-haye standard manage kon. Ma REST-e khales nistim — gahi RPC-style ham darim — vali 90% karmun HTTP-e standard-e.
+Har chizi ke to in system etefagh miofte, asasan ye **HTTP request/response**-e. Browser (ya axios, ya device) ye request mizane; server ye response mide. Method + path migan «chi mikhay», header-ha context mibaran (ki-i, kodom site, che zabani), body payload-e write-ha-st, va status code natije ra be zaban-e standard mige. **REST** ye set ghanun-e ke mige resource-ha ra ba URL va method-haye standard manage kon — vali Dejban REST-e khales nist: kenar-e CRUD-e resource-oriented, POST-haye RPC-style ham darim (Login, Import, CreateVisitorAndVisitSchedule).
+
+To Dejban in olgu az browser ta Postgres zendegi mikone: Axios Bearer + cookie + `X-Site-Id` → Gateway (CORS, rate limit, JWT) → YARP → Minimal API / Controller → MediatR → DB. Error-ha ba ProblemDetails (RFC 7807) barmigardan; auth dual-channel-e (access to header/memory, refresh to HttpOnly cookie). In fasl WORLD-e HTTP/REST ra midahad, ba’d DEJBAN neshan mide hamin mafahim koja pin shodan.
 
 ---
 
@@ -14,21 +16,19 @@ Har chizi ke to in system etefagh miofte, ye HTTP request-e. Browser ye request 
 
 ## HTTP chiye?
 
-HTTP = HyperText Transfer Protocol. Protocol-e **request/response** roye model-e client-server.
-
-Client ye chizi mikhad (request), server javab mide (response). Hamin.
+HTTP = HyperText Transfer Protocol. Protocol-e **request/response** roye model-e client-server. Yani client ye chizi mikhad (request), server javab mide (response) — va in exchange asasan **stateless**-e: server az request-e ghabli chizi yadesh nist, pas har request bayad hame-ye info-ye lazem ra ba khodesh biarad.
 
 ```
 Client (browser / axios / device)  →  Server
 Client                             ←  Server
 ```
 
-Vijegi-haye asli:
+Vijegi-haye asli ke bayad hifz koni:
 
-- **Stateless** — server az request-e ghabli chizi yadesh nist. Har request bayad hame-ye info-ye lazem ra dashte bashe (token, site, zaban). Be hamin dalil har bar `Authorization` header mifresti.
-- **Text-based** (HTTP/1.1) — message ghabel-e khandan-e.
+- **Stateless** — be hamin dalil har bar `Authorization` (va gahi `X-Site-Id`) mifresti; session-e server-side default nist.
+- **Text-based** (HTTP/1.1) — message ghabel-e khandan-e (debug ba DevTools/curl sade-st).
 - **Application layer** — roye TCP (va mamulan TLS) neshaste.
-- **Extensible** — mikhay header-e jadid ezafe koni? `X-Site-Id` — ejaze dari.
+- **Extensible** — header-e jadid mesle `X-Site-Id` ejaze dari; protocol khodesh break nemishe.
 
 ## Stack-e shabake
 
@@ -87,6 +87,8 @@ scheme        host           port       path            query    fragment
 
 ## Method-ha
 
+Method yani «che amali mikhay ru resource». Do mafhum-e mosahebe-i ke bayad joda koni: **safe** (resource ra avaz nemikone) va **idempotent** (N bar zadan = 1 bar — state-e naha'i yeki mimane). Jadval-e zir hamin fargh ra neshan mide:
+
 | method | body? | safe? | idempotent? | baraye chi |
 |---|---|---|---|---|
 | GET | na | bale | bale | bekhoon |
@@ -97,14 +99,11 @@ scheme        host           port       path            query    fragment
 | DELETE | gahi | na | bale | hazf |
 | OPTIONS | na | bale | bale | CORS preflight |
 
-**Safe** = resource ra avaz nemikone (read-only).
-**Idempotent** = 10 bar zadan = 1 bar zadan. State-e server yeki mimone.
-
-POST idempotent nist — 2 bar POST = 2 ta create. PUT idempotent-e — 2 bar PUT haman resource ro avaz mikone. DELETE ham idempotent-e — 2 bar delete, bar-e dovom 404 ya 204, vali state-e server avaz nashode.
+POST idempotent nist — 2 bar POST mamulan = 2 ta create. PUT idempotent-e — 2 bar PUT haman resource ro be haman state miare. DELETE ham idempotent-e — 2 bar delete, bar-e dovom 404 ya 204, vali state-e server digar avaz nashode.
 
 ## REST chiye?
 
-REST = Representational State Transfer. Roy Fielding PhD-esh ro in sakhte. 6 ta gheyd:
+REST = Representational State Transfer — Roy Fielding to PhD-esh in constraint-ha ra tarif karde. Yani REST «framework» nist; ye set ghanun-e ke age follow koni, API-t predictable va cache-friendly mishe. 6 ta gheyd:
 
 1. **Client-server** — UI joda az data
 2. **Stateless** — har request khod-kafa
@@ -113,14 +112,18 @@ REST = Representational State Transfer. Roy Fielding PhD-esh ro in sakhte. 6 ta 
 5. **Layered system** — client nemifahme posht-e proxy chi-e
 6. **Code on demand** (optional) — JS az server
 
-**Richardson maturity:**
+**Richardson maturity** ye scale-e amali-e ke mige API-t cheghadr «RESTful»-e:
 
-- Level 0: ye URL, hamechiz POST (SOAP)
+- Level 0: ye URL, hamechiz POST (SOAP-style)
 - Level 1: chand resource URL
 - Level 2: HTTP method + status dorost
 - Level 3: HATEOAS (link to response — bishtar-e API-ha nadaran)
 
+Dejban mamulan beyn-e Level 1–2-e: resource CRUD + gahi RPC POST.
+
 ## Status code — guide-e kamel
+
+Status code zaban-e kootah-e beyn-e client va server-e: «success?», «client ghalat?», ya «server kharab?». FE bayad 401 ra az 403 joda kone; Gateway bayad 502/504 ra az 500-e app joda kone.
 
 **2xx — success:**
 
@@ -186,7 +189,7 @@ Validation-e chand error:
 
 ## Header-ha
 
-Header = metadata. Body = payload. Header-e request context mide (ki-i, che zabani, chi mikhay). Header-e response natije mide (cache, cookie, CORS).
+Header = metadata; body = payload. Header-e request context mide (ki-i, che zabani, chi mikhay). Header-e response natije mide (cache, cookie, CORS). Hop-by-hop header-ha (`Connection`, `Keep-Alive`, `Upgrade`) ra proxy bayad hazf kone; `Authorization` / `Cookie` / `Content-Type` bayad bemoonan. Header size limit mamulan 8–16KB-e — JWT-e bozorg + cookie → 431.
 
 **Request headers-e mohem:**
 
@@ -206,13 +209,9 @@ Header = metadata. Body = payload. Header-e request context mide (ki-i, che zaba
 - `Retry-After` — 429, key saniye wait
 - `Access-Control-Allow-*` — CORS
 
-**Hop-by-hop vs end-to-end:** `Connection`, `Keep-Alive`, `Upgrade` proxy bayad hazf kone. `Authorization`, `Cookie`, `Content-Type` bayad bemoonan.
-
-Header size limit: 8-16KB (IIS/Kestrel). JWT-e bozorg + cookie-ha → 431 Request Header Fields Too Large.
-
 ## Cookie
 
-Cookie ye key-value-e ke server `Set-Cookie` mifreste, browser zakhire mikone va har request automatic mibure.
+Cookie ye key-value-e ke server ba `Set-Cookie` mifreste, browser zakhire mikone, va har request-e matching **automatic** mibare — yani JS lazem nist attach kone. In baraye refresh token khoob-e (HttpOnly), vali CSRF risk ham miad chon browser khodesh mifreste.
 
 Flag-haye mohem:
 
@@ -230,9 +229,7 @@ Flag-haye mohem:
 
 ## CORS
 
-CORS = Cross-Origin Resource Sharing. Browser policy-e ke mige "JS-e origin A nemitone response-e origin B ra bekhone magar server B ejaze bedahad."
-
-Origin = scheme + host + port. `https://app:3034` ≠ `https://gateway:443`.
+CORS = Cross-Origin Resource Sharing. In **browser policy**-e (na security-e server): mige «JS-e origin A nemitone response-e origin B ra bekhone magar server B ejaze bedahad.» Origin = scheme + host + port — pas `https://app:3034` ≠ `https://gateway:443`. curl, Postman, va device CORS nadaran; security-e vagheyi hanuz JWT + permission-e.
 
 **Preflight:** ghabl az POST-e cross-origin ba custom header (Authorization, X-Site-Id, Content-Type: application/json), browser aval OPTIONS mizane:
 
@@ -380,7 +377,7 @@ POST ra idempotent farz nakon. In risk-e business-e.
 
 ## Request-e vagheyi chejori zendegi mikone
 
-Senario: user to app-e dejban, site entekhab karde, "create reservation" mizane.
+Senario: user to app-e dejban, site entekhab karde, «create reservation» mizane. In 10 step haman Day 00 lifecycle-e, vali ba detail-e HTTP-e:
 
 1. Click → `apiClient.post('/api/v1/Reservations', body)`
 2. Axios interceptor:

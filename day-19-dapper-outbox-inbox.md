@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-Dapper = micro-ORM: SQL minevisi, result map mishe be object. EF Core change-tracker / LINQ dare; Dapper **control + speed** baraye raw SQL. Tu Dejban, Dapper qalb-e **outbox/inbox workers** hast: poll ba `FOR UPDATE`, update `processed_on_utc`, idempotent consumer check. Write-e outbox hanooz **EF interceptor**-e. Hybrid: EF baraye domain, Dapper baraye messaging plumbing.
+**Dapper** = micro-ORM: SQL ra khodet minevisi, result map mishe be object. EF Core change-tracker va LINQ dare; Dapper **control + speed** midahad baraye raw SQL — bedune tracking overhead. Chera important-e? Outbox/inbox worker-ha SQL-e hot + row lock mikhan, na graph-e domain.
+
+To Dejban, Dapper qalb-e **outbox/inbox workers**-e: poll ba `FOR UPDATE`, update `processed_on_utc`, idempotent consumer check. Write-e outbox hanooz **EF interceptor**-e (hamoon transaction ba business data). Hybrid: EF baraye domain write, Dapper baraye messaging plumbing. Day 21 pattern ra deep mikone; inja tool + SQL.
 
 ---
 
@@ -35,7 +37,7 @@ await conn.ExecuteAsync(
 | Multi-mapping | Include | splitOn / multi-map |
 | Best for | domain write, complex graph | reports, jobs, hot SQL, locks |
 
-**Micro-ORM** = map rows ↔ objects, bedune full unit-of-work stack.
+**Micro-ORM** = map rows ↔ objects, bedune full unit-of-work stack. Vaghti miduni SQL chi bayad bashe (FOR UPDATE, EXISTS, …), Dapper natural-e.
 
 ---
 
@@ -60,6 +62,8 @@ bool exists = await conn.ExecuteScalarAsync<bool>(
 ---
 
 ## Parameterization (SQL injection)
+
+Hamishe parameterized — string concat = hole:
 
 ```csharp
 // ✅ parameterized
@@ -86,9 +90,13 @@ DefaultTypeMap.MatchNamesWithUnderscores = true;
 SqlMapper.AddTypeHandler(new GuidListHandler());
 ```
 
+Dejban `MatchNamesWithUnderscores` ra to `AddApplication` set mikone — vase hamin snake_case Postgres ba PascalCase C# match mishe.
+
 ---
 
 ## Transaction + row locking
+
+Worker-ha bayad row ra lock konan ta do instance yek message ra do-bar process nakonan:
 
 ```csharp
 await using var tx = await conn.BeginTransactionAsync();
@@ -116,7 +124,7 @@ await tx.CommitAsync();
 | `FOR UPDATE SKIP LOCKED` | skip locked → parallel workers ✅ scale |
 | `FOR UPDATE NOWAIT` | fail immediately if locked |
 
-**World best practice for multi-instance workers:** `SKIP LOCKED`.
+**World best practice for multi-instance workers:** `SKIP LOCKED`. Dejban alan faghat `FOR UPDATE` (+ Quartz single execution) — scale smell.
 
 ---
 
@@ -133,7 +141,7 @@ Later worker:
   5. Mark processed
 ```
 
-**Chera?** Age publish ghabl az commit bashe va crash kone → event lost ya phantom. Outbox = at-least-once + durable.
+**Chera?** Age publish ghabl az commit bashe va crash kone → event lost ya phantom. Outbox = at-least-once + durable. Dual-write problem ra Day 21 deep mikone.
 
 ## Inbox (pattern)
 
@@ -156,7 +164,7 @@ EXISTS? → skip
 ELSE → handle → INSERT consumer
 ```
 
-Decorator pattern (Scrutor) around real handler.
+Decorator pattern (Scrutor) around real handler — Day 23/24.
 
 ---
 
@@ -184,6 +192,8 @@ Decorator pattern (Scrutor) around real handler.
 ---
 
 # BAKHSH-E DOVOM: DEJBAN — Dapper to outbox/inbox
+
+Hybrid architecture-e Dejban: EF baraye domain + interceptor write to outbox; Dapper baraye poll/process/idempotency. 8 module hamin pattern — faghat schema name fargh mikone. Avval version/setup, ba'd flow.
 
 ## Version & setup
 

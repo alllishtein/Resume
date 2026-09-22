@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-Modular monolith DI = **composition root** (`Program.cs`) + **per-module extension methods** (`AddPersonnelsModule`, `AddVisitorsModule`, …). Shared cross-cutting: `AddApplication` (MediatR + validators) va `AddInfrastructure` (auth, MassTransit, Quartz, Redis, tenant, outbox interceptor). Har module: DbContext + schema, repos, `IUnitOfWork` alias, outbox/inbox options + Quartz job config, domain/integration handlers + **Scrutor `Decorate` idempotent**, `AddEndpoints`. MassTransit consumers az module be shared `AddInfrastructure(... moduleConfigureConsumers[])` pass mishan. Config per module: `modules.personnels.json`. Module jadid = class `XxxModule` + yek khat to `Program` — OCP. Standalone microservices (Identity/ACL) ye `AddInfrastructure` monolitik daran, na 8 module.
+Modular monolith DI yani **composition root** (`Program.cs`) + **per-module extension methods** (`AddPersonnelsModule`, `AddVisitorsModule`, …). Shared cross-cutting joda-st: `AddApplication` (MediatR + validators) va `AddInfrastructure` (auth, MassTransit, Quartz, Redis, tenant, outbox interceptor). Har module DbContext + schema, repos, `IUnitOfWork` alias, outbox/inbox options + Quartz, domain/integration handlers + **Scrutor `Decorate` idempotent**, va `AddEndpoints` ra register mikone.
+
+MassTransit consumers az module be shared `AddInfrastructure(... moduleConfigureConsumers[])` pass mishan. Config per module: `modules.personnels.json`. Module jadid = class `XxxModule` + yek khat to `Program` — OCP. Standalone microservices (Identity/ACL) ye `AddInfrastructure` monolitik daran, na 8 module.
 
 ---
 
@@ -14,7 +16,7 @@ Modular monolith DI = **composition root** (`Program.cs`) + **per-module extensi
 
 ## Composition root chie?
 
-Yekja ke **hameye** service-ha register mishan va app build mishe — usually `Program.cs` / `Startup`.
+Yekja ke **hameye** service-ha register mishan va app build mishe — usually `Program.cs` / `Startup`:
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -23,7 +25,7 @@ builder.Services.AddBar();
 var app = builder.Build();
 ```
 
-**Ghaede:** Domain/Application **nabayad** `IServiceCollection` bebinan. Faghat Infrastructure/API composition root DI midone.
+**Ghaede:** Domain/Application **nabayad** `IServiceCollection` bebinan. Faghat Infrastructure/API composition root DI midone — vase inke domain pure bemune.
 
 ---
 
@@ -36,8 +38,9 @@ services.AddScoped<IPersonnelRepository, PersonnelRepository>();
 // × 400...
 ```
 
-Moshkel:
-- Merge conflict
+Moshkel-ha:
+
+- Merge conflict — har feature Program ra touch mikone
 - Onboarding: koja chi register shode?
 - Nemishe module ra mentally extract kard
 - Test host hard (partial wiring)
@@ -66,7 +69,7 @@ public static class CatalogModule
 builder.Services.AddCatalogModule(builder.Configuration);
 ```
 
-**Maziat:** encapsulation of wiring; Program stays a **table of contents**.
+**Maziat:** encapsulation of wiring; Program stays a **table of contents** — list-e module-ha, na 2000 khat register.
 
 ---
 
@@ -92,7 +95,7 @@ Order matters for some overrides; usually shared first, modules next.
 | **Scoped** | per request (scope) | DbContext, repos, handlers |
 | **Singleton** | app lifetime | cache, Channel, interceptors (careful), MT bus |
 
-**Classic bug:** Singleton → Scoped (DbContext) captive dependency.
+**Classic bug:** Singleton → Scoped (DbContext) captive dependency — memory leak / wrong scope.
 
 Module registers almost everything **Scoped** except Channel/options monitors/singletons intentional.
 
@@ -198,6 +201,8 @@ Ya `WebApplicationFactory` full host.
 
 ## Anti-patterns
 
+In-ha ra to review zud mibini:
+
 1. Domain project references `Microsoft.Extensions.DependencyInjection` for registration
 2. Circular module deps (Personnels → Visitors → Personnels)
 3. Register concrete only — hard to test
@@ -220,6 +225,8 @@ Ya `WebApplicationFactory` full host.
 ---
 
 # BAKHSH-E DOVOM: DEJBAN — Modular DI to in proje
+
+`Program.cs` table-of-contents-e: avval shared Application + Infrastructure, ba'd `AddXxxModule` baraye har schema. MediatR handlers az Application assemblies miayan; endpoints/repos/DbContext az AddXxxModule. Order-e zir ra yad begir.
 
 ## Big picture — `Program.cs` composition root
 

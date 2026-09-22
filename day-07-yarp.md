@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-YARP ye library-e Microsoft-e ke reverse proxy ra dakhele app-e ASP.NET Core-et misaze. Be jaye inke nginx ya ye chiz-e joda dashte bashi, khodesh dakhele haman process-e C#-e to run mishe. In mani-esh inke tamam-e middleware-ha, auth, rate-limit va DI ke dari estefade mikoni, mostaghim roye proxy ham kar mikonan. Gateway-e Dejban ba YARP 2.3.0 sakhtim ke 7+ microservice ra posht-e yek URL makhi mikone.
+**YARP** (Yet Another Reverse Proxy) library-e Microsoft-e ke reverse proxy ra **dakhele** app-e ASP.NET Core-et misaze. Be jaye inke nginx ya Envoy-e joda dashte bashi, khodesh dakhele haman process-e C# run mishe — va in yani tamam-e middleware-ha, auth, rate-limit, CORS va DI ke dari, mostaghim roye proxy ham kar mikonan. Model-esh aslan 4 ta chiz-e: **Route** (che request-i match she), **Cluster** (pool-e server-ha), **Destination** (address-e vagheyi), va **Transform** (rewrite-e path/header).
+
+To Dejban, Gateway ba YARP **2.3.0** sakhtim ke 7+ microservice ra posht-e **yek URL** makhi mikone: IdentityServer, Dejban API, DCC, ACLServer, RequestTracker, Reporting, GateServer. Auth va rate-limit yekja-an; SignalR hub-ha ba `/{**catch-all}` route mishan; JWT baraye WebSocket az `?access_token=` miad (Day 06). Front-end faghat gateway ra mibine — address-e dakheli service-ha az client makhfi mimune.
 
 ---
 
@@ -14,15 +16,15 @@ YARP ye library-e Microsoft-e ke reverse proxy ra dakhele app-e ASP.NET Core-et 
 
 ## YARP chiye?
 
-YARP makhfaf-e "Yet Another Reverse Proxy"-e. Microsoft khodesh develop-esh mikone va roye GitHub-e dotnet organization-e. Akharin version-e stable alan (Sep 2026) **2.3.0** hast ke ba .NET 8+ kar mikone. Open-source-e, MIT license, va Microsoft khodesh to Azure va chand service-e dakheli-esh estefade mikone.
+YARP makhfaf-e "Yet Another Reverse Proxy"-e. Microsoft khodesh develop-esh mikone va roye GitHub-e organization-e `dotnet` host shode. Akharin version-e stable alan (Sep 2026) **2.3.0** hast ke ba .NET 8+ kar mikone; open-source-e (MIT), va Microsoft khodesh to Azure va chand service-e dakheli azash estefade mikone.
 
-Yaddasht: YARP ye **library**-e, na ye **executable**-e. Yani to khodet ye ASP.NET Core app misazi va YARP ra toosh host mikoni — bar khalaf-e nginx ke ye process-e joda-st.
+Yaddasht-e mohem: YARP ye **library**-e, na ye **executable**-e. Yani to khodet ye ASP.NET Core app misazi va YARP ra toosh host mikoni — bar khalaf-e nginx ke ye process-e joda-st. Hamin farq-e koochik, aslan chera auth/CORS/rate-limit-e C#-et ba proxy yeki mishavad.
 
 ---
 
 ## Reverse proxy be zaban-e sade
 
-Farz kon ye restoran dari ke chand ta ashpaz dare. Moshteri nemifahme kodom ashpaz ghaza-sho misaze — faghat be garson (proxy) sefarsho mide va garson tasmim migire kodom ashpaz in ghaza ro dar miare.
+Farz kon ye restoran dari ke chand ta ashpaz dare. Moshteri nemifahme kodom ashpaz ghaza-sho misaze — faghat be garson (proxy) sefarsho mide, va garson tasmim migire kodom ashpaz in ghaza ro dar miare. Browser ham haminjoor-e: mostaghim ba microservice sohbat nemikone; faghat Gateway ra mibine.
 
 ```
 Browser  →  Gateway (YARP)  →  IdentityServer
@@ -34,58 +36,58 @@ Browser  →  Gateway (YARP)  →  IdentityServer
                               →  GateServer
 ```
 
-Browser hich vaght mostaghim ba service-ha sohbat nemikone. Faghat Gateway ro mibine. In chand ta maziyat dare:
+In olgu chand ta maziyat-e vagheyi mide:
 
-1. **Yek URL baraye client** — frontend faghat `https://gateway` ra midoone. Service-ha avaz mishan, client khabar nadare.
-2. **Auth yekja** — JWT, token revoke, rate limit hame roye Gateway-an. Service-ha dobare check mitonan (defense in depth), vali aslish inja-st.
+1. **Yek URL baraye client** — frontend faghat `https://gateway` ra midoone. Service-ha avaz mishan ya migrate mishan, client khabar nadare.
+2. **Auth yekja** — JWT, token revoke, rate limit hame roye Gateway-an. Service-ha mitonan dobare check konan (defense in depth), vali asl-e fard filter inja-st.
 3. **CORS yekja** — browser faghat ba Gateway sohbat mikone, pas CORS faghat inja lazem-e.
-4. **TLS termination** — client HTTPS mizane, Gateway be service-ha HTTP (dakheli network) mifreste.
-5. **Network isolation** — microservice-ha to Docker network-e private-an. Browser na address-eshun ra midone na mitone bereshun.
+4. **TLS termination** — client HTTPS mizane; Gateway be service-ha HTTP (dakheli network) mifreste.
+5. **Network isolation** — microservice-ha to Docker network-e private-an. Browser na address-eshun ra midone, na mitone bereshun.
 
 ### Forward proxy vs reverse proxy
 
-In soal to mosahebe miyad. Farq-eshun:
+In soal to mosahebe ziad miyad. Farq-eshun injuri-e:
 
-- **Forward proxy** — client azash estefade mikone baraye birun raftan. Masalan VPN/proxy-e shoma baraye internet. Client midune proxy-e, server nemidune.
-- **Reverse proxy** — server-side. Client nemidune proxy hast. Request be server mire, proxy entekhab mikone kodom backend.
+- **Forward proxy** — client azash estefade mikone baraye birun raftan. Masalan VPN/proxy-e shoma baraye internet. Client midune proxy-e; server-e destination aslan nemidune.
+- **Reverse proxy** — server-side-e. Client nemidune posht-e URL ye proxy hast. Request miad, proxy entekhab mikone kodom backend javab bede.
 
-YARP reverse proxy-e. Client aslan nemidune Dejban API port-e 5042 roye localhost-e ya Docker DNS-e `http://dejban`.
+YARP reverse proxy-e. Client aslan nemidune Dejban API port-e `5042` roye localhost-e ya Docker DNS-e `http://dejban`.
 
 ---
 
 ## Chera YARP? Moghayese ba alternative-ha
 
-In soal to mosahebe aslan miyad: "Chera YARP, na nginx ya Ocelot?"
+Soal-e mosahebe: "Chera YARP, na nginx ya Ocelot?" — javab bayad trade-off bashe, na "chon Microsoft gofte."
 
 ### YARP vs nginx
 
-nginx C-e, fast, mature, millions site estefade mikonan. Vali:
+nginx C-e, fast, mature, va millions site azash estefade mikonan. Vali vaghti stack-et C#-e, dard-e sar peida mishe:
 
-- Auth-e shoma C#-e (JWT, Redis revoke, cookie). To nginx bayad plugin/Lua benevisi ya auth_request be ye sidecar bezani.
+- Auth-e shoma C#-e (JWT, Redis revoke, cookie). To nginx bayad plugin/Lua benevisi ya `auth_request` be ye sidecar bezani.
 - CORS-e shoma C#-e, DI dare, `IConfiguration` mikhone. nginx CORS config-e static-e.
-- Rate limit-e shoma per-IP ba `SlidingWindow`-e C# va custom logic. nginx `limit_req` dare vali custom IP extraction az `X-Forwarded-For` sakht-tar-e.
+- Rate limit-e shoma per-IP ba `SlidingWindow`-e C# va custom logic. nginx `limit_req` dare, vali custom IP extraction az `X-Forwarded-For` sakht-tar-e.
 - SignalR/WebSocket: nginx mitone, vali config-e timeout va upgrade header-esh khaas-e. YARP roye Kestrel-e, WebSocket upgrade native-e.
-- Hot reload: YARP `IConfiguration` ra watch mikone → route change bedune restart. nginx-e bayad `nginx -s reload` bezani.
+- Hot reload: YARP `IConfiguration` ra watch mikone → route change bedune restart. nginx bayad `nginx -s reload` bezani.
 - Monitoring: YARP to haman ASP.NET pipeline-e — OpenTelemetry, Serilog, health check, hamechiz access dari. nginx log-e joda dare.
 
 Kholase: age hame-ye auth/CORS/rate-limit-et C#-e, manteghi-tar-e proxy-et ham C# bashe. Yek process, yek deployment, yek set tool.
 
 ### YARP vs Ocelot
 
-Ocelot ham C#-e va marufe, vali:
+Ocelot ham C#-e va marufe, vali emruz dige entekhab-e aval nist:
 
-- Ocelot **dige maintain nemishe** daqiq (community fork-ha ziad vali original pir shode). YARP **active maintenance** az Microsoft dare.
-- Ocelot roye ASP.NET middleware-e vali design-esh ghadimi-tar-e. YARP modern-e, `IConfiguration`-based, minimal.
+- Ocelot **dige maintain nemishe** daqiq (community fork-ha ziad-an, vali original pir shode). YARP **active maintenance** az Microsoft dare.
+- Ocelot roye ASP.NET middleware-e, vali design-esh ghadimi-tar-e. YARP modern-e, `IConfiguration`-based, minimal.
 - Performance: YARP az `HttpForwarder` estefade mikone ke direct socket-to-socket copy dare. Ocelot overhead-e bishtar.
 - Ocelot aggregation built-in dare (chand request ba ham). YARP nadare — bayad khodet handler bezani.
 
 ### YARP vs Envoy
 
-Envoy Google/CNCF-e, kheli powerful, sidecar mesh (Istio). Vali:
+Envoy (Google/CNCF) kheli powerful-e va vase sidecar mesh (Istio) ideal-e. Vali:
 
 - Envoy ye process-e joda-st (C++). YARP dakhele app-et-e.
-- Envoy baraye Kubernetes service mesh ideal-e. Shoma Docker Compose dari, Envoy overkill-e.
-- Envoy xDS API dare baraye dynamic config. YARP `IConfiguration` ya custom `IProxyConfigProvider`.
+- Envoy baraye Kubernetes service mesh ideal-e. Shoma Docker Compose dari — Envoy overkill-e.
+- Envoy xDS API dare baraye dynamic config. YARP `IConfiguration` ya custom `IProxyConfigProvider` dare.
 
 ### Kholase table
 
@@ -103,46 +105,41 @@ Envoy Google/CNCF-e, kheli powerful, sidecar mesh (Istio). Vali:
 
 ## 4 ta mojoodi-e asli-e YARP
 
-Kol-e model-e YARP 4 ta chize. Ina ra hifz kon — mosahebe ashegh-e in tafkik-e:
+Kol-e model-e YARP aslan 4 ta chiz-e. Ina ra hifz kon — mosahebe ashegh-e in tafkik-e, chon neshun mide reverse proxy "magic" nist: yek match, yek pool, yek address, yek rewrite.
 
 ### 1. Route
 
-Ye ghanun ke mige "age request in shekli bud, bereshonesh be folan cluster."
-
-Har route in field-ha ra dare:
+Ye ghanun ke mige: "age request in shekli bud, bereshonesh be folan cluster." Har route field-haye zir ra dare:
 
 - **`RouteId`** — unique name. Mesal: `"visitor-routes-v1"`, `"auth-login-route-v1"`.
-- **`ClusterId`** — kodom cluster in ra porsess kone. Mesal: `"dejban-cluster"`.
+- **`ClusterId`** — kodom cluster in ra process kone. Mesal: `"dejban-cluster"`.
 - **`Match`** — condition-e match:
-  - `Path` — pattern. `/Api/v{apiVersion}/Visitors/{**catch-all}`. In `{apiVersion}` segment-e, `{**catch-all}` baghimande-ye path (shamel `/`).
-  - `Methods` — optional. Array-e method. Age nabashe hame match-e. Age bashe, faghat on method-ha.
-  - `Headers` — optional. Match roye header-e khaas (kam estefade).
-  - `QueryParameters` — optional (YARP 2.x).
-  - `Hosts` — multi-domain routing (shoma nadarid).
+  - `Path` — pattern. `/Api/v{apiVersion}/Visitors/{**catch-all}`. In `{apiVersion}` segment-e; `{**catch-all}` baghimande-ye path (shamel `/`).
+  - `Methods` — optional. Array-e method. Age nabashe hame match-e; age bashe, faghat on method-ha.
+  - `Headers` / `QueryParameters` / `Hosts` — optional (kam estefade; multi-domain).
 - **`AuthorizationPolicy`** — `"anonymous"` (skip auth), `"default"` (bayad login), ya custom.
 - **`RateLimiterPolicy`** — esm-e rate limit policy.
 - **`CorsPolicy`** — override-e CORS per route (kam).
-- **`Order`** — priority. Koochik-tar = aval match. Default 0. Mesal: public ticket `Order: -10` ghabl az `ticket-routes-v1` ke `Order` nadare (default 0).
+- **`Order`** — priority. Koochik-tar = aval match. Default 0. Mesal: public ticket `Order: -10` ghabl az `ticket-routes-v1` ke `Order` nadare.
 - **`Transforms`** — taghir-e request/response.
 - **`Metadata`** — custom key-value baraye middleware-e custom.
 
 ### 2. Cluster
 
-Grooh-e server-hayi ke in service-e. Masalan `dejban-cluster` yani "service-e Dejban." Ye cluster mitone chand ta destination dashte bashe baraye load balancing.
+Grooh-e server-hayi ke "in service" hesab mishan. Masalan `dejban-cluster` yani service-e Dejban. Ye cluster mitone chand ta destination dashte bashe baraye load balancing.
 
-Field-ha:
+Field-ha-ye asli:
 
 - **`ClusterId`** — unique name (implicit az JSON key).
 - **`Destinations`** — dictionary az server-ha.
 - **`LoadBalancingPolicy`** — algorithm (zir tozih).
 - **`HealthCheck`** — active/passive config.
 - **`SessionAffinity`** — sticky session.
-- **`HttpClient`** — timeout, SSL, version.
-- **`HttpRequest`** — timeout, version, activity timeout.
+- **`HttpClient` / `HttpRequest`** — timeout, SSL, HTTP version, activity timeout.
 
 ### 3. Destination
 
-Address-e vagheyi-e yek server dakhele cluster. 
+Address-e vagheyi-e yek server dakhele cluster. To local development:
 
 ```json
 "destination1": {
@@ -150,7 +147,7 @@ Address-e vagheyi-e yek server dakhele cluster.
 }
 ```
 
-Ya to Docker:
+Ya to Docker Compose, Docker DNS resolve mikone:
 
 ```json
 "destination1": {
@@ -158,16 +155,7 @@ Ya to Docker:
 }
 ```
 
-`http://dejban` Docker DNS resolve mikone be IP-e container-e Dejban.
-
-Age 2 ta destination dashte bashi:
-
-```json
-"destination1": { "Address": "http://dejban-1" },
-"destination2": { "Address": "http://dejban-2" }
-```
-
-YARP load balance mikone beyneshonn. Shoma alan **faghat 1** destination per cluster darid (jox baskool).
+Age 2 ta destination dashte bashi, YARP load balance mikone beyneshun. Shoma alan **faghat 1** destination per cluster darid (jox baskool) — pas load balancing-e multi-node fa'al nist, vali model-esh amade-st.
 
 ### 4. Transform
 
@@ -421,7 +409,7 @@ Custom `IProxyPipeline` — middleware-e khaas faghat baraye ye route.
 
 ## Package va version
 
-`ApiGateway.csproj` → `Directory.Packages.props`:
+Gateway package-e YARP ra az `Directory.Packages.props` migire — version central-e, na per-csproj:
 
 ```xml
 <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />

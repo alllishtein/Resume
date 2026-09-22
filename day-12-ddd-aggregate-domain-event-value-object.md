@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-DDD (Domain-Driven Design) mige: **business logic bayad to Domain bashe**, na to Controller / Handler / Database. Entity-ha rich bashe (factory, invariant, event). Value Object identity nadare. Aggregate consistency boundary-e. Domain Event mige "chizi etefagh oftad." Dejban in tactical pattern-ha ra **partially** piade karde: `Entity` + `DomainEvent` + outbox hast; `AggregateRoot` / `ValueObject` base / Domain Service **nist**.
+**DDD** (Domain-Driven Design) mige: **business logic bayad to Domain bashe**, na to Controller / Handler / Database. Entity-ha rich bashan (factory, invariant, event). Value Object identity nadare. Aggregate consistency boundary-e. Domain Event mige "chizi etefagh oftad" — ta Application/Infrastructure betonan reaction neshun bedan bedune inke Domain azashun khabar dashte bashe.
+
+Dejban in tactical pattern-ha ra **partially** piade karde: `Entity` + `DomainEvent` + outbox hast; `AggregateRoot` base / `ValueObject` base / Domain Service **nist**. In fasl neshun mide koja rich-e (Vehicle, Asset), koja softer-e (Personnel, Visitor), va koja anemic mimune (RequestTracker, Identity) — ta resume dorough nashe.
 
 ---
 
@@ -14,7 +16,7 @@ DDD (Domain-Driven Design) mige: **business logic bayad to Domain bashe**, na to
 
 ## Chera DDD?
 
-Bedune DDD, model-e anemic peida mishe:
+Bedune DDD, model-e anemic peida mishe — yani entity faghat property dare va logic to handler zendegi mikone:
 
 ```csharp
 // ❌ Anemic model:
@@ -27,7 +29,7 @@ public class Order {
 order.Status = OrderStatus.Shipped;  // invariant? check nashode!
 ```
 
-Ba DDD:
+Ba DDD, rule dakhele entity mimune:
 
 ```csharp
 // ✅ Rich model:
@@ -44,11 +46,13 @@ public class Order : Entity {
 }
 ```
 
-**Maziat:** Business rule yek ja zendegi mikone. Handler thin mishe. Test-e domain bedune DB.
+**Maziat:** Business rule yek ja zendegi mikone. Handler thin mishe. Test-e domain bedune DB. Bug-e "invalid state" kamtar mishe.
 
 ---
 
 ## Entity vs Value Object vs Aggregate
+
+In se mafhum asl-e tactical DDD-an — mosahebe ashegh-e farq-eshun-e:
 
 | | Entity | Value Object | Aggregate |
 |---|---|---|---|
@@ -69,6 +73,7 @@ public abstract class Entity {
 ```
 
 **Gha'ede-ha:**
+
 1. Private constructor (+ EF parameterless)
 2. Private setters
 3. Factory method (`Create` / `CreateAsync`)
@@ -77,7 +82,7 @@ public abstract class Entity {
 
 ### Value Object
 
-Identity nadare. Do ta `VehiclePlate` ba haman Value + Type → **equal**-an.
+Identity nadare. Do ta `VehiclePlate` ba haman Value + Type → **equal**-an. Ideal-an immutable-an — taghir = instance-e jadid.
 
 ```csharp
 public record Money(decimal Amount, string Currency)
@@ -107,7 +112,7 @@ public record Money(decimal Amount, string Currency)
 
 ### Aggregate + Aggregate Root
 
-Aggregate = cluster of objects ke **ba ham** consistent hastand.
+Aggregate = cluster of objects ke **ba ham** consistent hastand. Root = tanha entry point az birun — child-ha az handler mostaghim `new` / mutate **nashan**.
 
 ```
 Vehicle (ROOT)
@@ -146,7 +151,7 @@ public class Order : AggregateRoot  // entry point
 
 ## Domain Event
 
-**Domain Event** = "chizi ke to domain etefagh oftade va digaran bayad bedunan."
+**Domain Event** = "chizi ke to domain etefagh oftade va digaran bayad bedunan." Domain nadone Inventory / Email / digar module che kar mikonan — faghat Raise mikone.
 
 ```csharp
 public sealed class OrderShippedDomainEvent(Guid orderId) : DomainEvent
@@ -156,6 +161,7 @@ public sealed class OrderShippedDomainEvent(Guid orderId) : DomainEvent
 ```
 
 **Chera?**
+
 - Decouple: Order nadone Inventory / Shipping / Email
 - Audit trail
 - Eventual consistency beyn-e aggregates / modules
@@ -247,6 +253,8 @@ Reusable, composable, testable. Alternative: repository method per query.
 # BAKHSH-E DOVOM: DEJBAN — DDD to in proje
 
 ## Kernel: Entity + DomainEvent
+
+Dejban `AggregateRoot` base nist — hame az `Entity` miran. Domain event list dakhele Entity zendegi mikone; Clear ba'd az SaveChanges / outbox:
 
 ```csharp
 // File: Dejban.Common.Domain/Entity.cs

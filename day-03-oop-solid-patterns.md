@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-OOP 4 ta soton dare: encapsulation, abstraction, inheritance, polymorphism. SOLID 5 ta ghanun-e ke class-ha ra tamiz negah midare. Design pattern-ha rah-hal-haye tekrari-an ke hezaran developer ghabl az to emtehan kardan. In 3 ta ba ham column-e interview-e senior-an — hame ja miporsan. To in stack hame-ye ina zendegi daran: entity-e `Personnel` encapsulation dare (private setter, factory method), `IEndpoint` OCP-e (class-e jadid bezar, startup ra avaz nakon), `IdempotentDomainEventHandler` decorator-e (Scrutor), `IDeviceSyncStrategy` strategy-e (ZK, Tiam, Virdi).
+OOP chahar soton dare: **encapsulation**, **abstraction**, **inheritance**, **polymorphism**. SOLID panj ghanun-e ke class-ha ra tamiz va ghabel-e taghir negah midare. Design pattern-ha rah-hal-haye tekrari-an ke hezaran developer ghabl az to emtehan kardan. In se ta ba ham column-e interview-e senior-an — hame ja miporsan — vali inja faghat teoria nist: to Dejban hame-ye ina zendegi daran.
+
+Mesal-e sari': entity-e `Personnel` encapsulation dare (private setter, factory method, SoftDelete ba domain event). `IEndpoint` + auto-discovery OCP-e (class-e jadid bezar, startup ra avaz nakon). MediatR pipeline behaviors Chain of Responsibility-an. `IdempotentDomainEventHandler` ba Scrutor Decorator-e. `IDeviceSyncStrategy` + factory Strategy-e baraye ZK/Tiam/Virdi. In fasl WORLD ra midahad, ba’d hamin pattern-ha ra ba path-e exact pin mikone.
 
 ---
 
@@ -16,7 +18,7 @@ OOP 4 ta soton dare: encapsulation, abstraction, inheritance, polymorphism. SOLI
 
 ### 1. Encapsulation
 
-Data va behavior ra to yek ja negah dar, va dostor-e biruni ra az joziat makhfi kon. Biruni faghat az **public API** estefade kone.
+Encapsulation yani data va behavior ra to yek ja negah dari, va dastor-e biruni ra az joziat makhfi koni — biruni faghat az **public API** estefade kone. Hadaf-e vaghe'i in nist ke «field private bashe»; hadaf in-e ke **state-e object hamishe valid bemoone**.
 
 Be zaban-e sade: entity-e `Personnel` field-e `IsDeleted` dare. Age biruni dorost `personnel.IsDeleted = true` bezane, domain event raise nemishe, `DeletedAt` set nemishe, `DeletedBy` gom mishe. Pas field ra `private set` mikoni va ye method `SoftDelete(string deletedBy)` midahi ke **hame-ye kar** ra yekja mikone.
 
@@ -186,11 +188,13 @@ public interface ICommand<TResponse> : IRequest<ErrorOr<TResponse>>;
 
 ## SOLID — 5 ghanun-e kamel
 
+SOLID ye checklist-e design-e: age class-ha ra ba in 5 ghanun check koni, taghir-e feature kamtar cascade mikone. Har ghanun ra ba mesal-e Dejban bekhun — mosahebe ham hamin-e: theory + mesal-e vaghe'i.
+
 ### S — Single Responsibility Principle
 
 **Ye class bayad faghat yek dalil baraye avaz shodan dashte bashe.**
 
-Be zaban-e sade: ye class yek kar mikone. Age do dalil baraye avaz shodan dashte bashe (masalan business logic + serialization), tekke-ash kon.
+Be zaban-e sade: ye class yek kar mikone. Age do dalil baraye avaz shodan dashte bashe (masalan business logic + serialization), tekke-ash kon. Interview tip: SRP ra **nagoo** «ye method yek kar» — bego «One reason to change.» Handler avaz mishe age business logic avaz she; Repository avaz mishe age data store avaz she — ina joda-an.
 
 Dorost:
 
@@ -202,8 +206,6 @@ Dorost:
 Ghalat:
 
 - `IclockController` (~1700 khat) — ZK protocol parsing + DB access + device sync + logging + response building. In 5 ta dalil baraye avaz shodan dare.
-
-**Interview tip:** SRP ra **nagoo** "ye method yek kar." Bego: "One reason to change." Handler avaz mishe age business logic avaz she. Repository avaz mishe age data store avaz she. Ina joda-an → SRP.
 
 ---
 
@@ -324,9 +326,11 @@ In **Dependency Injection** (DI) container-e ASP.NET-e. DIP principle-e, DI mech
 
 ## Design Patterns — guide-e kamel
 
+Pattern yani «rah-hal-e tekrari ba esm». Na inke harja pattern bezani — vali age interview beperse Repository/Mediator/Strategy, bayad ba mesal-e Dejban javab bedi. Inja 11 ta pattern-e asli + chand ta ke inja kam/nist.
+
 ### 1. Repository Pattern
 
-**Chie?** Layer-e beyn-e domain va data access. Domain faghat interface ra midone.
+**Chie?** Layer-e beyn-e domain va data access. Domain faghat interface ra midone — yani handler `DbContext` ra nemibine.
 
 **World mesal:**
 
@@ -662,6 +666,8 @@ result.Match(
 ---
 
 # BAKHSH-E DOVOM: DEJBAN — OOP va patterns to in proje
+
+In bakhsh neshan mide hamin SOLID/pattern-ha koja pin shodan — az `Entity` base ta Scrutor decorator. Aval az asos shoru' kon: domain event infrastructure ye class-e koochik-e.
 
 ## Entity base class — hame-ye entity-ha
 

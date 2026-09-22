@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-`async` thread-e jadid nemisaze. Ta avalin `await`-e nocomplete, code sync roye haman thread-e. `await` thread ra bar migardone be pool ta I/O tamum she. ASP.NET Core ba in model hezaran request-e baz ra ba chand dah thread handle mikone. Blockage (`.Result`, `ToList()` sync, `lock` round-e await) in model ra mikoshe.
+`async`/`await` to .NET **thread-e jadid nemisaze**. Ta avalin `await`-e ke hanuz complete nashode, code sync roye haman thread-e caller ejra mishe; `await` thread ra bar migardone be ThreadPool ta I/O (Postgres, HTTP, disk) tamum she, ba’d continuation (momkene ru thread-e dige) edame mide. ASP.NET Core ba hamin model hezaran request-e baz ra ba chand dah worker handle mikone — yani scale az «na-block kardan» miad, na az «thread bishtar».
+
+To Dejban in olgu hameja-st: MediatR handlers, EF `*Async`, Channel/SSE, Quartz inbox, gRPC device SDK. Chizi ke model ra mikoshe: sync-over-async (`.Result`, `ToList()` sync to `PagedList.CreateAsync`), CT na-pass shodan, Channel unbounded, ya `lock` round-e `await`. In fasl WORLD-e runtime ra midahad, ba’d smell-ha va pattern-haye Dejban ra pin mikone (.NET 10 LTS).
 
 ---
 
@@ -14,14 +16,14 @@
 
 ## Thread vs Task vs async
 
+Aval bayad se mafhum ra joda koni — aksar hang az mix kardan-e ina miad. **Thread** = OS worker (geran). **Task** = va'de-ye «kar tamam mishe». **async method** = compiler state-machine ke mitone await kone. Shaye'e-ye ghalat: «async yani background thread.» Haghighat: async yani «mitonam await konam» — ta await, haman caller thread.
+
 | | Thread | Task | async method |
 |---|---|---|---|
 | chiye | OS worker | promise-e kar | compiler state-machine |
 | geran? | bale (stack ~1MB) | koochik | state machine + Task |
 | CPU-bound | `Task.Run` / `Parallel` | wrapper | async CPU ra parallel nemikone |
 | I/O-bound | block — bad | Task az socket/DB | await dorost-e |
-
-Shaye'e-ye ghalat: "async yani background thread." Haghighat: async yani "mitonam await konam." Ta await, haman caller thread.
 
 ASP.NET request:
 
@@ -36,16 +38,14 @@ thread-pool thread
 
 ## ThreadPool
 
-.NET ThreadPool do noe thread dare:
+.NET ThreadPool do noe thread dare — va fahmidan-e ina key-e scale-e ASP.NET-e:
 
 - **Worker threads:** CPU ya continuation-e async
 - **I/O completion threads:** callback-e socket/file (IOCP/epoll)
 
-`await npgsql.QueryAsync` → query ferestade mishe → thread azad → Postgres javab → IOCP → Task complete → continuation.
+`await npgsql.QueryAsync` → query ferestade mishe → thread azad → Postgres javab → IOCP → Task complete → continuation. Age be jaye await, sync `ToList()` bezani, worker lock mimone ru Postgres — inja **starvation** shoru mishe: 100 request sync → 100 worker block → request-e 101om saf.
 
-**Starvation:** 100 request harkdum `query.ToList()` sync → 100 worker lock-e Postgres. Request-e 101om bayad saf beishe.
-
-`Task.Run` baraye I/O ziadi thread masraf mikone. Baraye CPU (image resize, hash) ghabul-e.
+`Task.Run` baraye I/O ziadi thread masraf mikone (fake async). Baraye CPU (image resize, hash) ghabul-e.
 
 ## async/await — compiler chi misaze
 
@@ -134,6 +134,8 @@ Gahi justified: STA thread (COM interop), legacy callback ke sync API mikhad. Va
 `Parallel.ForEachAsync` (.NET 6+) ba `MaxDegreeOfParallelism` baraye bulk. **DbContext per task**, na share.
 
 ## Race, deadlock, livelock, starvation
+
+In chahar bug-e concurrency-an ke mosahebe ziad miporse. Be zaban-e sade: race = tartib-e unexpected; deadlock = cycle wait; livelock = retry bi-payan; starvation = kesi resource nemigire.
 
 | bug | mani |
 |---|---|
@@ -282,7 +284,11 @@ Node: ham event loop. CPU-e sangin loop ra block mikone (mesle `.Result` to .NET
 
 # BAKHSH-E DOVOM: DEJBAN — async va concurrency to in proje
 
+In bakhsh WORLD ra be smell va pattern-e exact-e repo link mikone. Avvalin chizi ke zir-e load dard mikone, mamulan sync-over-async-e — va Dejban mesal-e classic dare.
+
 ## PagedList — smell-e asli
+
+Esm `CreateAsync`-e, vali raftar sync-e. Yani thread-pool thread ra block mikone — exactly hamun senario-ye starvation ke WORLD goft:
 
 ```csharp
 public static async Task<PagedList<T>> CreateAsync(...)
@@ -293,7 +299,7 @@ public static async Task<PagedList<T>> CreateAsync(...)
 }
 ```
 
-Esm `Async`, raftar sync. Thread block mikone. Avvalin fix-e performance zir-e load. Bayad `CountAsync` + `ToListAsync` + CT.
+Avvalin fix-e performance zir-e load: bayad `CountAsync` + `ToListAsync` + CT.
 
 ## CancellationToken — nime-kamel
 

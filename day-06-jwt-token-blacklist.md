@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-Authentication mige "ki hasti?", authorization mige "ejaze dari?" JWT (JSON Web Token) ye token-e stateless-e ke server sign mikone va client har request baresh miferse. Vali "stateless" yani server nemitone cancel-esh kone — magar Redis blacklist dashte bashi. In fasl kole auth cycle ra yad migiri: login → token generation → cookie/header → validation → claims enrichment → refresh rotation → revocation → frontend handling.
+**Authentication** mige «ki hasti?», **authorization** mige «ejaze dari?». **JWT** (JSON Web Token) ye token-e **stateless**-e ke server sign mikone va client har request baresh miferse — yani har instance mitone validate kone bedune session store. Vali «stateless» yani server nemitone cancel-esh kone ta expire nashe, **magar** blacklist (Redis) dashte bashi. Be hamin dalil Dejban access-e kootah (15 min) + refresh-e boland (7 ruz) + Redis revoke + refresh rotation dare.
+
+In fasl kole auth cycle ra yad migiri: login → token generation (do secret: access/refresh) → cookie HttpOnly + Bearer/localStorage → Gateway TokenRevoke → JWT validate → `IClaimsTransformation` enrichment → refresh rotation ba `jti` → revocation trigger-ha → Axios 401→refresh→retry. WORLD ghablan concept ra midahad; DEJBAN path-ha va smell-ha (secret to repo, fail-open Redis, Dejban.Api bedune `UseTokenRevoke`) ra pin mikone.
 
 ---
 
@@ -14,7 +16,7 @@ Authentication mige "ki hasti?", authorization mige "ejaze dari?" JWT (JSON Web 
 
 ## JWT chie?
 
-JSON Web Token. 3 bakhsh dare ke ba `.` joda mishan:
+JWT = JSON Web Token. Ye string-e se bakhshe ke ba `.` joda mishan — header, payload, signature. Payload **encoded**-e, na **encrypted**: kasi mitone decode kone va bekhone; faghat **tamper-proof**-e chon sign shode. Be zaban-e sade: server mige «in claim-ha ra man emza kardam»; client (va digar service-ha) ba secret/public key emza ra check mikonan.
 
 ```
 eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U
@@ -48,6 +50,8 @@ HMACSHA256(base64(header) + "." + base64(payload), secret)
 
 ## Chera JWT?
 
+Session-based auth traditional server-side state midare; JWT state ra be client mibare. Scale asan-tar mishe, vali revoke sakht-tar — be hamin dalil blacklist miad tu bazi.
+
 ### Session-based (traditional) vs Token-based (JWT)
 
 | | Session | JWT |
@@ -65,6 +69,8 @@ HMACSHA256(base64(header) + "." + base64(payload), secret)
 ---
 
 ## Access Token vs Refresh Token
+
+Do token ba omr-e mokhtalef — in olgu-ye standard-e SPA-st. Access kootah-e ta leak damage kam bashe; refresh boland-e va HttpOnly mimane ta XSS nemitone bedozde-ash. Jadval-e zir fargh ra kholase mikone:
 
 | | Access Token | Refresh Token |
 |---|---|---|
@@ -202,7 +208,11 @@ JWT payload = **claims**. Key-value pair-ha ke identity information daran.
 
 # BAKHSH-E DOVOM: DEJBAN — JWT to in proje
 
+In bakhsh kole cycle-e auth-e Dejban ra ba path-e exact midahad: IdentityServer token misaze, Gateway revoke + JWT validate mikone, microservice-ha claims enrich mikonan, frontend Axios refresh mikone.
+
 ## Architecture overview
+
+Diagram-e zir boundary-ha ra neshan mide — frontend, Gateway, Identity, Redis blacklist, va digar service-ha:
 
 ```
 ┌──────────┐     ┌──────────────┐     ┌───────────────┐
@@ -528,6 +538,8 @@ public async Task<ErrorOr<object>> Handle(RefreshCommand command, CancellationTo
 
 ## Token blacklist — Redis
 
+JWT stateless-e; blacklist yani «in token ra dige ghabul nakon» ta expire. Dejban key = kole access JWT string (chon access `jti` nadare), TTL ~15 min, va L1 cache disable-e ta multi-instance stale nabashe.
+
 ### Interface + Implementation
 
 ```csharp
@@ -635,7 +647,7 @@ foreach (var userToken in user.UserTokens)
 
 ## Claims enrichment — CustomClaimsTransformation
 
-JWT faghat `userId` + `sites` dare. Role, permission, position, endpoint claim-ha kojast?
+JWT faghat `userId` + `sites` dare — role, permission, position, endpoint claim kojast? Server har request ba `IClaimsTransformation` az DB/cache enrich mikone. Chera to JWT nist? Size (50 permission = JWT bozorg), freshness (role change instant), va exposure kamtar.
 
 ```csharp
 // File: Common/Authorization/CustomClaimsTransformation.cs

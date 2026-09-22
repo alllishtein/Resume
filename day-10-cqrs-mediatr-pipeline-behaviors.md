@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-CQRS mige read va write ra joda kon. MediatR in joda kardan ra implement mikone: command/query → pipeline behavior-ha → handler. Pipeline behavior mesle middleware-e vali baraye use case-ha (na HTTP). Dejban 3 behavior dare: Exception → Logging → Validation. Microservice-ha faghat Validation daran. In fasl kole flow ra trace mikone: az HTTP request ta response.
+**CQRS** mige read va write ra joda kon — chon masooliat-hashun yeki nist. **MediatR** in joda kardan ra implement mikone: command/query → pipeline behavior-ha → handler. Pipeline behavior mesle middleware-e, vali baraye use case-ha (na HTTP): validation, logging, exception — bedune inke handler por she.
+
+To Dejban, Dejban API 3 behavior dare: Exception → Logging → Validation. Microservice-ha ma'mulan faghat Validation daran. In fasl kole flow ra trace mikone: az HTTP request ta `ISender.Send` ta handler ta `ErrorOr` ta response — ta betuni to mosahebe va debug begui request koja rad mishavad.
 
 ---
 
@@ -14,7 +16,7 @@ CQRS mige read va write ra joda kon. MediatR in joda kardan ra implement mikone:
 
 ## CQRS chie?
 
-**Command Query Responsibility Segregation.** Do ta model joda:
+**Command Query Responsibility Segregation.** Do ta model joda — na chon "fashion"-e, balke chon write logic complex-e va read logic optimize-e:
 
 | | Command (Write) | Query (Read) |
 |---|---|---|
@@ -41,13 +43,13 @@ CQRS mige read va write ra joda kon. MediatR in joda kardan ra implement mikone:
 | **Level 3** | Separate databases (write DB vs read DB) | high |
 | **Level 4** | Event sourcing (write = events, read = projections) | very high |
 
-Dejban Level 1 — same DB, same entities, vali command/query type system enforce mishe.
+Dejban Level 1 — same DB, same entities, vali command/query type system enforce mishe. In kafi-e ke handler-ha joda bashan va pipeline beyneshun yeki bashe.
 
 ---
 
 ## MediatR chie?
 
-Mediator design pattern. **Request** miad, MediatR **handler** ra peida mikone va seda mizane. Caller handler ra nemishine — loose coupling.
+Mediator design pattern. **Request** miad, MediatR **handler** ra peida mikone va seda mizane. Caller handler ra nemishinase — loose coupling. In yani endpoint faghat `ISender` ra midone, na repository va event bus.
 
 ```
 Endpoint → ISender.Send(command) → MediatR → Handler → Result
@@ -75,6 +77,7 @@ public class VisitorController(ISender sender)
 ```
 
 **Maziat:**
+
 - Endpoint az handler details bikhabar-e
 - Handler testable (mock dependencies)
 - Cross-cutting concern (validation, logging) to pipeline behavior
@@ -84,7 +87,7 @@ public class VisitorController(ISender sender)
 
 ## Pipeline Behavior chie?
 
-Mesle **middleware** vali baraye MediatR request-ha. Har request az chain-e behavior-ha rad mishe ghabl (va ba'd) az handler.
+Mesle **middleware** vali baraye MediatR request-ha. Har request az chain-e behavior-ha rad mishe ghabl (va ba'd) az handler — va haminja-st ke validation mitone handler ra aslan seda **nazane**.
 
 ```
 Request → Behavior1 → Behavior2 → Behavior3 → Handler → Response
@@ -98,6 +101,7 @@ public class MyBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResp
         TRequest request,
         RequestHandlerDelegate<TResponse> next,  // next behavior ya handler
         CancellationToken cancellationToken)
+```
     {
         // BEFORE handler
         var response = await next();
@@ -107,7 +111,7 @@ public class MyBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResp
 }
 ```
 
-**Register order = execution order:** aval register = outermost ring.
+**Register order = execution order:** aval register = outermost ring. Chera? Chon Exception bayad hame chiz ra wrap kone, Logging bayad Validation + Handler ra bebinad, va Validation bayad nazdik-e handler bashe ta early-exit kone.
 
 ```csharp
 config.AddOpenBehavior(typeof(ExceptionBehavior<,>));   // 1st: outermost
@@ -144,17 +148,21 @@ Yek class, hame request-ha.
 
 ## ISender vs IMediator vs IPublisher
 
+Se interface hastan — mosahebe aslan farq-eshun ra miporse:
+
 | interface | chi | use case |
 |---|---|---|
 | `ISender` | `Send(IRequest<T>)` — yek handler | command/query dispatch |
 | `IPublisher` | `Publish(INotification)` — chand handler | domain event broadcast |
 | `IMediator` | har do | legacy, prefer `ISender` |
 
-**Best practice:** `ISender` baraye command/query. `IPublisher` baraye notification. `IMediator` na lazem (too broad).
+**Best practice:** `ISender` baraye command/query. `IPublisher` baraye notification. `IMediator` na lazem (too broad) — endpoint dependency-esh kamtar va roshan-tar mimune.
 
 ---
 
 ## INotification (MediatR Notification)
+
+Vaghti ye event to-process mitone chand listener dashte bashe, `INotification` miad. `Send` yek handler; `Publish` chand handler:
 
 ```csharp
 public record OrderPlaced(Guid OrderId) : INotification;
@@ -174,6 +182,7 @@ await publisher.Publish(new OrderPlaced(orderId));
 ```
 
 **Send vs Publish:**
+
 - `Send` → **exactly one** handler. Return value. Command/Query.
 - `Publish` → **zero to many** handlers. No return. Notification/Event.
 
@@ -249,6 +258,8 @@ public async Task<ErrorOr<Guid>> Handle(CreateCommand cmd, CancellationToken ct)
 # BAKHSH-E DOVOM: DEJBAN — CQRS + MediatR to in proje
 
 ## MediatR registration — Dejban vs Microservices
+
+Farq-e asli: Dejban API multi-assembly + 3 behavior; microservice-ha ma'mulan single-assembly + faghat Validation. GateServer even bedune behavior-e (legacy).
 
 ### Dejban — 3 behavior, multi-assembly
 

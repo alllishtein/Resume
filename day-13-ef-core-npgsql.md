@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-EF Core = ORM-e .NET. Tu Dejban: **EF Core 10 + Npgsql 10** roye PostgreSQL. Modular monolith = **1 database, 8 schema**, har module `DbContext`-e khodesh. Soft-delete + multi-tenancy ba **named global query filters**. Domain event-ha ba `SaveChangesInterceptor` miran to outbox. Migration-ha **server-side (migrationesho)** — entity change commit mishe, Migration class to repo commit **nemishe**.
+**EF Core** ORM-e .NET-e: LINQ → SQL, change tracking, migrations. Tu Dejban: **EF Core 10 + Npgsql 10** roye PostgreSQL. Modular monolith = **1 database, 8 schema**, har module `DbContext`-e khodesh. Soft-delete + multi-tenancy ba **named global query filters**. Domain event-ha ba `SaveChangesInterceptor` miran to outbox.
+
+**Migration policy:** Migration-ha **server-side (migrationesho)** — entity/config change commit mishe, Migration class to repo commit **nemishe**. In fasl neshun mide chejori multi-schema, Owned types, filter, interceptor, va Dapper hybrid ba-ham kar mikonan — bedune inke Domain be EF couple she.
 
 ---
 
@@ -14,13 +16,16 @@ EF Core = ORM-e .NET. Tu Dejban: **EF Core 10 + Npgsql 10** roye PostgreSQL. Mod
 
 ## ORM chie? Chera EF Core?
 
+ORM (Object-Relational Mapper) bridge beyn-e object-e C# va table-e SQL-e. Entekhab-e approach trade-off dare:
+
 | approach | chi | trade-off |
 |---|---|---|
 | **Raw SQL / Dapper** | control, performance | boilerplate, type-safety kam |
 | **EF Core** | LINQ → SQL, change tracking, migrations | abstraction cost, N+1 risk |
 | **Hybrid** | EF write + Dapper read/hot path | Dejban in style-e (Day 14) |
 
-EF Core:
+EF Core chahar chiz-e asl mide:
+
 1. **DbContext** = session + Unit of Work
 2. **Change Tracker** = midone chi Added/Modified/Deleted-e
 3. **Migrations** = schema evolution as code
@@ -35,6 +40,8 @@ services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 ```
 
+Lifetime lifetime mohem-e — eshtebah = bug-e sakht:
+
 - Default lifetime: **Scoped** (1 per HTTP request)
 - Singleton = disaster (thread-unsafe + stale)
 - Transient = no shared Unit of Work
@@ -46,6 +53,8 @@ Request → resolve DbContext → query/mutate → SaveChanges → dispose
 ---
 
 ## Change tracking & SaveChanges
+
+Vaghti entity ra load mikoni, EF track-esh mikone. Taghir ra detect mikone va `SaveChanges` SQL misaze:
 
 ```csharp
 var person = await db.Personnels.FirstAsync(p => p.Id == id); // tracked
@@ -61,7 +70,7 @@ await db.SaveChangesAsync(); // UPDATE ...
 | Modified | UPDATE |
 | Deleted | DELETE |
 
-**`AsNoTracking()`** — read-only, faster, no tracker. Query handlers almost always.
+**`AsNoTracking()`** — read-only, faster, no tracker. Query handlers almost always — chon read side change nemikhad.
 
 ---
 
@@ -77,7 +86,7 @@ public string Name { get; set; }
 builder.Property(e => e.Name).IsRequired();
 ```
 
-**Best practice:** Fluent API to Infrastructure. Domain project EF reference **nadare**.
+**Best practice:** Fluent API to Infrastructure. Domain project EF reference **nadare**. In Clean Architecture (Day 09) ra hefz mikone.
 
 ---
 
@@ -97,7 +106,7 @@ builder.HasOne(e => e.Site)
 | SetNull | child FK → null |
 | ClientCascade | in-memory only |
 
-**Shadow property:** FK in model bedune property on class:
+**Shadow property:** FK in model bedune property on class — Infrastructure midone, Domain cleaner mimune.
 
 ```csharp
 builder.HasMany(v => v.Ownerships)
@@ -108,6 +117,8 @@ builder.HasMany(v => v.Ownerships)
 ---
 
 ## Owned types & JSON columns
+
+Owned types Value Object ra map mikonan bedune inke table-e joda lazem bashe (ya ba table-e owned). JSON column baraye nested document-e flexible-e:
 
 ```csharp
 // Owned — columns in parent table (or owned table)
@@ -128,6 +139,8 @@ builder.OwnsMany(e => e.Companions, b => b.ToJson());
 
 ## Global query filters
 
+Global filter yani har query automatic `WHERE` migire — soft delete va tenant filter injuri clean mimunan:
+
 ```csharp
 modelBuilder.Entity<Personnel>()
     .HasQueryFilter(p => !p.IsDeleted);
@@ -137,13 +150,15 @@ modelBuilder.Entity<Personnel>()
     .HasQueryFilter("SoftDelete", p => !p.IsDeleted);
 ```
 
-Automatic `WHERE` on every query. Bypass: `.IgnoreQueryFilters()`.
+Automatic `WHERE` on every query. Bypass: `.IgnoreQueryFilters()` — faghat vaghti miduni chera (admin restore, cross-tenant job).
 
 **Use cases:** soft delete, multi-tenancy, multi-language.
 
 ---
 
 ## Interceptors
+
+Interceptor beyn-e `SaveChanges` va SQL mineshine — jayi ke domain event → outbox, ya audit stamp, sakhte mishe:
 
 ```csharp
 public class AuditInterceptor : SaveChangesInterceptor
@@ -163,6 +178,8 @@ Alternatives: override `SaveChanges` on DbContext, domain events manually.
 ---
 
 ## Migrations (World)
+
+To donya migration class to repo commit mishe. To Dejban **na** — entity/config commit, Migration class server-side (migrationesho). World workflow:
 
 ```bash
 dotnet ef migrations add AddPersonnelsTable -p Infrastructure -s Api
@@ -254,6 +271,8 @@ options.UseNpgsql(cs).UseSnakeCaseNamingConvention();
 # BAKHSH-E DOVOM: DEJBAN — EF Core to in proje
 
 ## Version
+
+EF Core 10 + Npgsql 10 — version central to `Directory.Packages.props`:
 
 ```xml
 <!-- Directory.Packages.props -->

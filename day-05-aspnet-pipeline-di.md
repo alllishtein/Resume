@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-Har HTTP request ke be server miad, az ye **pipeline** rad mishe: CORS → logging → exception → auth → tenant → endpoint. In pipeline ra **middleware** misazand. Service-haei ke middleware va endpoint lazem daran ra **DI container** inject mikone. In do ta (pipeline + DI) qalb-e ASP.NET Core hastand — bedune fahm-e ina, hich feature-i nabayad bezani.
+Har HTTP request ke be server miad, az ye **pipeline** rad mishe — masalan CORS → logging → exception → auth → tenant → endpoint. In zanjire ra **middleware** misazad: har halqe mitone request ra process kone, `next()` seda bezane, ya short-circuit kone (401/429). Service-haei ke middleware va endpoint lazem daran ra **DI container** inject mikone ba se lifetime (Singleton / Scoped / Transient). In do ta — pipeline + DI — qalb-e ASP.NET Core-an; bedune fahm-e ina, feature-e badi hang midahad.
+
+To Dejban in olgu to ~8 service tekrarme: Gateway rate-limit + TokenRevoke + JWT + YARP; Dejban.Api TenantContext + Minimal API `MapEndpoints`; module-ha ba `AddXxxModule` DI register mishan; MediatR behaviors mesle middleware-e command/query-an; Scrutor decorator baraye idempotent event handler. In fasl WORLD ra midahad, ba’d fargh-e pipeline-ha va smell-ha (mesle `UseTokenRevoke` nadashte-ye Dejban.Api) ra pin mikone.
 
 ---
 
@@ -16,7 +18,7 @@ Har HTTP request ke be server miad, az ye **pipeline** rad mishe: CORS → loggi
 
 ### Middleware chie?
 
-Ye **zanjiire** function ke request az yeki rad mishe, kare khodesh ra mikone, bad next ra seda mizane. Response ham az haman zanjire bargasht mikone.
+Middleware ye **zanjire** function-e: request az yeki rad mishe, kar-e khodesh ra mikone, ba’d `next` ra seda mizane; response ham az haman zanjire bargasht mikone. Yani mitoni «ghabl» va «ba'd» az endpoint logic dashte bashi bedune inke hame chiz ra to controller/endpoint tekraar koni.
 
 ```
 Request  →  CORS  →  Logging  →  Auth  →  Endpoint  →  Response
@@ -33,7 +35,7 @@ Request  →  CORS  →  Logging  →  Auth  →  Endpoint  →  Response
 
 ### Tartib MOHEM-e!
 
-Pipeline order = register order. `app.UseX()` ghabl az `app.UseY()` yani X aval run mishe.
+Pipeline order = register order. `app.UseX()` ghabl az `app.UseY()` yani X aval run mishe — va in tartib bug-zastarin ghesmat-e ASP.NET-e.
 
 ```csharp
 // DOROST:
@@ -129,7 +131,7 @@ app.UseMiddleware<MyMiddleware>();
 
 ### DI chie?
 
-Class-e A be interface-e B niaz dare. **Bedune DI:** A khodesh `new B()` misaze. **Ba DI:** container B ra misaze va be A mide.
+Class-e A be interface-e B niaz dare. **Bedune DI:** A khodesh `new B()` misaze → tight coupling, test sakht. **Ba DI:** container B ra misaze va be A mide → DIP + testability. ASP.NET Core DI built-in dare; Lifetime ra dorost entekhab nakoni, captive dependency ya disposed DbContext midari.
 
 ```csharp
 // ❌ Tight coupling:
@@ -144,7 +146,9 @@ public class OrderService {
 }
 ```
 
-### 3 Lifetime
+## 3 Lifetime
+
+Se lifetime-e asli — entekhab-e ghalat = bug-e production (captive dependency, stale DbContext, ya allocation-e bihude):
 
 | lifetime | mesal | kei |
 |---|---|---|
@@ -460,11 +464,13 @@ var agent = (Agent)context.Items["Agent"]!;
 
 # BAKHSH-E DOVOM: DEJBAN — Pipeline + DI to in proje
 
+In bakhsh neshan mide hamin pipeline/DI koja pin shodan — va koja inconsistent-an. Aval overview-e 8 service, ba’d middleware-haye custom.
+
 ## Pipeline-ye 8 service
 
 ### Common pattern (6 ta microservice)
 
-IdentityServer, ACLServer, DCC, RequestTracker, GateServer, Reporting hame in rah ra miran:
+IdentityServer, ACLServer, DCC, RequestTracker, GateServer, Reporting hame in rah ra miran (ba fargh-haye koochik):
 
 ```
 CORS → DbInit → OpenAPI(dev) → Serilog → ExceptionHandler → StatusCodePages

@@ -6,7 +6,9 @@
 
 ## Ye khat kholase
 
-Do layer baraye "input ghalat": **FluentValidation** (shape/format — empty, regex, length) va **ErrorOr** (natije-ye business — NotFound, Conflict). FluentValidation to MediatR pipeline run mishe → `Error.Validation` → handler aslan seda **nemishe**. Handler/domain ba ErrorOr NotFound/Conflict barmigardone. Endpoint `Match(Ok, Problem)` → HTTP. Exception = unexpected; ErrorOr = expected.
+Do layer baraye "input ghalat" darim, va nabayad mix shavand: **FluentValidation** (shape/format — empty, regex, length) va **ErrorOr** (natije-ye business — NotFound, Conflict). FluentValidation to MediatR pipeline run mishe → `Error.Validation` → handler aslan seda **nemishe**. Handler/domain ba ErrorOr NotFound/Conflict barmigardone. Endpoint `Match(Ok, Problem)` → HTTP.
+
+Gha'ede-ye zahan: **Exception = unexpected** (bug, infra fail); **ErrorOr = expected** (user typo, business rule). In fasl neshun mide chejori in do layer be-ham vasl mishan — az validator ta pipeline ta domain ta ProblemDetails — ta FE va mosahebe ye model-e vahed bebinand.
 
 ---
 
@@ -20,17 +22,19 @@ if (string.IsNullOrEmpty(name))
     throw new ValidationException("Name required");
 ```
 
+Chand ta dalil:
+
 - Exception = expensive + stack unwind
 - Expected failure (user typo) ≠ bug
 - Hard to return **multiple** field errors cleanly
 
-**Better:** validate → list of errors → return as value.
+**Better:** validate → list of errors → return as value. Inja FluentValidation + ErrorOr miad.
 
 ---
 
 ## FluentValidation chie?
 
-Library baraye rule-based validation. Separate class az handler.
+Library baraye rule-based validation. Rule-ha to ye class-e joda az handler zendegi mikonan — pas handler thin mimune va rule-ha reusable/testable-an.
 
 ```csharp
 public class CreateUserValidator : AbstractValidator<CreateUserCommand>
@@ -71,6 +75,8 @@ RuleFor(x => x.Email)
 // CascadeMode.Stop — stop after first failure on this property
 ```
 
+Default injuri-e ke **chand** field error ba-ham bargardand — FE mitone hame ra neshun bede. `Stop` faghat vaghti ke error-e ba'di ma'ni nadare.
+
 ### DI registration
 
 ```csharp
@@ -82,6 +88,8 @@ config.AddOpenBehavior(typeof(ValidationBehavior<,>));
 ---
 
 ## Result / ErrorOr pattern
+
+Be jaye throw, natije ra be onvan-e **value** barmigarduni: ya success, ya list-e error.
 
 ```csharp
 ErrorOr<User> result = await GetUser(id);
@@ -131,6 +139,8 @@ public static class UserErrors
 
 ## Layers of validation (World)
 
+Validation yek layer nist — chand sath dare, va har sath ye job-e khas:
+
 ```
 1. FluentValidation     → format, required, shape     (pipeline)
 2. Handler checks       → existence, uniqueness       (DB lookup)
@@ -138,7 +148,7 @@ public static class UserErrors
 4. DB constraints       → unique index last line
 ```
 
-Don't put uniqueness-only in FluentValidation `MustAsync` if you can do it in handler — clearer + race-aware with DB unique index.
+Don't put uniqueness-only in FluentValidation `MustAsync` if you can do it in handler — clearer + race-aware with DB unique index. FluentValidation baraye shape-e; business existence baraye handler/domain.
 
 ---
 
@@ -188,6 +198,8 @@ ASP.NET: `ValidationProblem` / `Problem` / custom mapper from ErrorOr.
 # BAKHSH-E DOVOM: DEJBAN — FluentValidation + ErrorOr
 
 ## Versions
+
+Package-ha central-an. FluentValidation baraye shape; ErrorOr baraye result — version-ha:
 
 ```xml
 FluentValidation.DependencyInjectionExtensions  12.1.0
