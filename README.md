@@ -58,17 +58,17 @@ in folder joda az git-e backend/frontend. har fasl ye `.md`.
 | 47 | [day-47-mui-emotion-rtl.md](./day-47-mui-emotion-rtl.md) | MUI 7 + Emotion + RTL |
 | 48 | [day-48-i18next-jalali.md](./day-48-i18next-jalali.md) | i18next + Jalali |
 | 49 | [day-49-auth-ui-guards-component-id.md](./day-49-auth-ui-guards-component-id.md) | Auth UI / Guards / `componentId` |
-| 50 | — | SignalR client |
-| 51 | — | FE patterns (`*.http.js` / feature folders) |
-| 52 | — | material-react-table |
-| 53 | — | SWR |
-| 54 | — | Vite + React Router SPA |
-| 55 | — | Playwright + Vitest |
-| 56 | — | xUnit + NetArchTest |
-| 57 | — | Testcontainers + Bogus |
-| 58 | — | GitLab CI + PM2 |
+| 50 | [day-50-signalr-client.md](./day-50-signalr-client.md) | SignalR client |
+| 51 | [day-51-fe-patterns-http-feature-folders.md](./day-51-fe-patterns-http-feature-folders.md) | FE patterns (`*.http.js` / feature folders) |
+| 52 | [day-52-material-react-table.md](./day-52-material-react-table.md) | material-react-table |
+| 53 | [day-53-swr.md](./day-53-swr.md) | SWR |
+| 54 | [day-54-vite-react-router-spa.md](./day-54-vite-react-router-spa.md) | Vite + React Router SPA |
+| 55 | [day-55-playwright-vitest.md](./day-55-playwright-vitest.md) | Playwright + Vitest |
+| 56 | [day-56-xunit-netarchtest.md](./day-56-xunit-netarchtest.md) | xUnit + NetArchTest |
+| 57 | [day-57-testcontainers-bogus.md](./day-57-testcontainers-bogus.md) | Testcontainers + Bogus |
+| 58 | [day-58-gitlab-ci-pm2.md](./day-58-gitlab-ci-pm2.md) | GitLab CI + PM2 |
 | 59 | [day-59-algorithms-big-o.md](./day-59-algorithms-big-o.md) | Algorithms + Big-O (mosahebe) |
 
-**Amade:** 00–49, 59 · **Khali (—):** 50–58
+**Amade:** 00–59 · **Khali (—):** —
 
-Avalin khali: **Day 50 — SignalR client**
+Curriculum complete (00–59).

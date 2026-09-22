@@ -755,4 +755,4 @@ Age in paragraph mal-e to shod — Day 49 done.
 
 ---
 
-*Day 49 tamum. Ba'd: Day 50 — SignalR client. Fehrest: [README.md](./README.md).*
+*Day 49 tamum. Ba'd: Day 50 � SignalR client (amade). Fehrest: [README.md](./README.md).*
