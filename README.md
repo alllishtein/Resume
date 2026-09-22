@@ -1,7 +1,6 @@
-<<<<<<< HEAD
 # Dejban stack — ketabche-ye ruzane
 
-in folder kharej az git-e. har ruz ye fasl. file `.md` ra mituni PDF koni.
+in folder kharej az backend/frontend git-e. har ruz ye fasl. file `.md` ra mituni PDF koni.
 
 **59 ruz:** 01 YARP + 02..07 bonyadi-e mosahebe + baghie tech/flow-e hamin stack.
 
@@ -20,7 +19,7 @@ in folder kharej az git-e. har ruz ye fasl. file `.md` ra mituni PDF koni.
 | 09 | [day-09-jwt-token-blacklist.md](./day-09-jwt-token-blacklist.md) | JWT Bearer + token blacklist |
 | 10 | [day-10-microservices-modular-monolith-ddd.md](./day-10-microservices-modular-monolith-ddd.md) | Microservices vs Modular Monolith + DDD layering |
 | 11 | [day-11-cqrs-mediatr-pipeline-behaviors.md](./day-11-cqrs-mediatr-pipeline-behaviors.md) | CQRS + MediatR + Pipeline Behaviors |
-| 12 | — | DDD (aggregate, domain event, value object) |
+| 12 | [day-12-ddd-aggregate-domain-event-value-object.md](./day-12-ddd-aggregate-domain-event-value-object.md) | DDD (aggregate, domain event, value object) |
 | 13 | — | EF Core 10 + Npgsql (multi-schema, migrations) |
 | 14 | — | Dapper (outbox/inbox) |
 | 15 | — | FluentValidation + ErrorOr |
@@ -70,6 +69,3 @@ in folder kharej az git-e. har ruz ye fasl. file `.md` ra mituni PDF koni.
 | 59 | — | Files/Documents (Dejban → DCC) |
 
 ruz-e badi ra bego, ketabche-ash sakhte mishe.
-=======
-# Resume
->>>>>>> 0ea28ac82d661b550534878729e86f8276f3d732
