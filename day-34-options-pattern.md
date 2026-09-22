@@ -717,4 +717,4 @@ Age in paragraph mal-e to shod — Day 34 done.
 
 ---
 
-*Day 34 tamum. Ba'd: Day 35 — Factory + Strategy (device sync). Fehrest: [README.md](./README.md).*
+*Day 34 tamum. Ba'd: Day 35 — Factory + Strategy (device sync) (amade). Fehrest: [README.md](./README.md).*

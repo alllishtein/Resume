@@ -43,21 +43,21 @@ in folder joda az git-e backend/frontend. har fasl ye `.md`.
 | 32 | [day-32-polly.md](./day-32-polly.md) | Polly |
 | 33 | [day-33-openapi-scalar.md](./day-33-openapi-scalar.md) | OpenAPI + Scalar |
 | 34 | [day-34-options-pattern.md](./day-34-options-pattern.md) | Options pattern |
-| 35 | — | Factory + Strategy (device sync) |
-| 36 | — | ASP.NET Identity |
-| 37 | — | Permission claims |
-| 38 | — | Excel import |
-| 39 | — | Stimulsoft + ImageSharp |
-| 40 | — | Auth end-to-end |
-| 41 | — | Files/Documents (Dejban → DCC) |
-| 42 | — | Next.js 16 + React 19 |
-| 43 | — | Turborepo + workspaces |
-| 44 | — | TanStack Query + Axios |
-| 45 | — | React Hook Form + Zod |
-| 46 | — | Zustand + immer |
-| 47 | — | MUI 7 + Emotion + RTL |
-| 48 | — | i18next + Jalali |
-| 49 | — | Auth UI / Guards / `componentId` |
+| 35 | [day-35-factory-strategy-device-sync.md](./day-35-factory-strategy-device-sync.md) | Factory + Strategy (device sync) |
+| 36 | [day-36-aspnet-identity.md](./day-36-aspnet-identity.md) | ASP.NET Identity |
+| 37 | [day-37-permission-claims.md](./day-37-permission-claims.md) | Permission claims |
+| 38 | [day-38-excel-import.md](./day-38-excel-import.md) | Excel import |
+| 39 | [day-39-stimulsoft-imagesharp.md](./day-39-stimulsoft-imagesharp.md) | Stimulsoft + ImageSharp |
+| 40 | [day-40-auth-end-to-end.md](./day-40-auth-end-to-end.md) | Auth end-to-end |
+| 41 | [day-41-files-documents-dejban-dcc.md](./day-41-files-documents-dejban-dcc.md) | Files/Documents (Dejban → DCC) |
+| 42 | [day-42-nextjs-react-19.md](./day-42-nextjs-react-19.md) | Next.js 16 + React 19 |
+| 43 | [day-43-turborepo-workspaces.md](./day-43-turborepo-workspaces.md) | Turborepo + workspaces |
+| 44 | [day-44-tanstack-query-axios.md](./day-44-tanstack-query-axios.md) | TanStack Query + Axios |
+| 45 | [day-45-react-hook-form-zod.md](./day-45-react-hook-form-zod.md) | React Hook Form + Zod |
+| 46 | [day-46-zustand-immer.md](./day-46-zustand-immer.md) | Zustand + immer |
+| 47 | [day-47-mui-emotion-rtl.md](./day-47-mui-emotion-rtl.md) | MUI 7 + Emotion + RTL |
+| 48 | [day-48-i18next-jalali.md](./day-48-i18next-jalali.md) | i18next + Jalali |
+| 49 | [day-49-auth-ui-guards-component-id.md](./day-49-auth-ui-guards-component-id.md) | Auth UI / Guards / `componentId` |
 | 50 | — | SignalR client |
 | 51 | — | FE patterns (`*.http.js` / feature folders) |
 | 52 | — | material-react-table |
@@ -69,6 +69,6 @@ in folder joda az git-e backend/frontend. har fasl ye `.md`.
 | 58 | — | GitLab CI + PM2 |
 | 59 | [day-59-algorithms-big-o.md](./day-59-algorithms-big-o.md) | Algorithms + Big-O (mosahebe) |
 
-**Amade:** 00–34, 59 · **Khali (—):** 35–58
+**Amade:** 00–49, 59 · **Khali (—):** 50–58
 
-Avalin khali: **Day 35 — Factory + Strategy (device sync)**
+Avalin khali: **Day 50 — SignalR client**
