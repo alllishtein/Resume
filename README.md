@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dejban stack — ketabche-ye ruzane
 
 in folder kharej az git-e. har ruz ye fasl. file `.md` ra mituni PDF koni.
@@ -69,3 +70,6 @@ in folder kharej az git-e. har ruz ye fasl. file `.md` ra mituni PDF koni.
 | 59 | — | Files/Documents (Dejban → DCC) |
 
 ruz-e badi ra bego, ketabche-ash sakhte mishe.
+=======
+# Resume
+>>>>>>> 0ea28ac82d661b550534878729e86f8276f3d732
