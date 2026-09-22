@@ -713,4 +713,158 @@ Standalone: `DbInitializer` → `MigrateAsync()` + seed.
 
 ---
 
-*Day 13 tamum. Ba'd: Day 14 — Repository + Unit of Work. Fehrest: [README.md](./README.md).*
+## Owned types — deep dive (Dejban patterns)
+
+### OwnsOne as column vs separate table
+
+| mapping | SQL shape | Dejban mesal |
+|---|---|---|
+| `OwnsOne` + column names | parent table extra columns | `VehiclePlate` → `plate_number` |
+| `OwnsOne` nested | still flattened or owned table | `CargoDetails`, `ConstructionDetails` |
+| `OwnsMany` + `ToJson()` | one `jsonb` column | `Companions`, `ContractorBoardMembers` |
+| Shadow FK on collection | child table, FK string | `Vehicle.Ownerships` → `"VehicleId"` |
+
+**Value object rule (Day 12):** owned type **no** separate identity — part of aggregate root. EF `OwnsOne` = «in-memory composition persisted».
+
+### PropertyAccessMode.Field
+
+Vehicle ownership list private `_ownerships` — EF writes via field, na public property. Config:
+
+```csharp
+builder.Metadata.FindNavigation(nameof(Vehicle.Ownerships))!
+    .SetPropertyAccessMode(PropertyAccessMode.Field);
+```
+
+**Smell:** agar field access forget koni → empty collection on load.
+
+### When **not** to use ToJson()
+
+- Filter/sort heavy on inner field → flattened columns or computed column
+- Large array growth unbounded → separate table + index
+- Cross-row query on JSON path → slow without GIN index (Dejban mostly stores, na query inside json)
+
+---
+
+## Interceptors — lifecycle + alternatives
+
+```
+SaveChangesAsync called
+  → SavingChangesAsync (interceptor)  ← InsertOutboxMessages here
+  → SQL generated + sent
+  → SavedChangesAsync (optional)
+```
+
+| approach | pro | con |
+|---|---|---|
+| `SaveChangesInterceptor` | clean, testable, all DbContexts | order of interceptors matters |
+| Override `SaveChanges` on DbContext | simple | duplicate across 8 contexts |
+| Domain event dispatch **after** SaveChanges | no same-tx outbox | **lost event** if crash |
+
+Dejban: **before** SQL — collect `DomainEvents` from tracked `Entity`, clear, insert `OutboxMessage` rows → **atomic** with business write.
+
+**Standalone services:** MassTransit EF outbox uses different tables + dispatcher — na `InsertOutboxMessagesInterceptor`.
+
+---
+
+## Naming conventions — snake_case end-to-end
+
+```csharp
+options.UseNpgsql(cs).UseSnakeCaseNamingConvention();
+```
+
+| CLR | Postgres (typical) |
+|---|---|
+| `PersonnelCode` | `personnel_code` |
+| `IsDeleted` | `is_deleted` |
+| `SiteId` | `site_id` |
+
+**Filtered index strings must match DB names:**
+
+```csharp
+.HasFilter("\"is_deleted\" = false");  // quoted lowercase
+```
+
+**Package:** `EFCore.NamingConventions` 10.0.0-rc.2 — still RC; watch upgrades.
+
+**Reporting:** multiple Dejban DbContexts all `UseSnakeCaseNamingConvention()` when pointing at `payamgostar_dejban`.
+
+**Identity/ACL:** mixed — some default Pascal columns in older tables; new code prefer snake on Dejban side.
+
+---
+
+## Multi-schema — rules of the road
+
+1. **`HasDefaultSchema(Schemas.X)`** on every module DbContext.
+2. **`MigrationsHistoryTable(..., schema)`** — har module migration stream joda.
+3. **No cross-schema FK** in practice — Site copy per module, sync via event.
+4. **Join cross-schema** technically mumken on same connection string — **avoid** (coupling smell); Reporting exception for read-only reports.
+
+Schema name map:
+
+| module | schema const |
+|---|---|
+| Personnels | `personnels` |
+| Visitors | `visitors` |
+| Vehicles | `vehicles` |
+| Armory | `armory` |
+| CashLogistics | `cash_logistics` |
+| Inventory | `inventory` |
+| SecurityPatrols | `security_patrols` |
+| WeighBridge | `weigh_bridge` |
+
+---
+
+## migrationesho — workflow (team policy)
+
+**Commit to git:** entity, `IEntityTypeConfiguration`, validators, handlers.  
+**Do NOT commit:** new `*Migration*.cs`, Designer, ModelSnapshot **for schema changes you introduce**.
+
+**Server:** migrationesho after deploy generates/applies migration against target DB.
+
+**Local dev:** `ApplyMigrations()` on Dejban.Api startup runs 8 contexts — convenient, risky if 2 instances race.
+
+**Historical repo:** old Migration folders exist — **new PRs** entity-only. Ghabl az push: pak kon migration-e local test.
+
+**Interview:** «Schema evolution is server-owned so developers don't fight over snapshot merge conflicts and prod apply is controlled.»
+
+---
+
+## Inventory module — filter gap (smell + fix)
+
+`InventoryDbContext.OnModelCreating`:
+
+- ✅ `HasDefaultSchema`, Fluent configs, outbox/inbox tables
+- ❌ `ApplySoftDeleteQueryFilters()` — **missing**
+- ❌ `ApplyTenantQueryFilters(this)` — **missing**
+- ❌ `ITenantContext` inject — DbContext faghat `DbContextOptions`
+
+**Impact:**
+
+| entity | risk |
+|---|---|
+| No `ISoftDeletable` on Inventory domain yet | soft-delete story incomplete module-wide |
+| No tenant filter | warehouse/product queries **cross-site leak** if API bug |
+| Reporting reads `inventory` schema direct | same data, separate context |
+
+**Fix direction (conceptual):** align with `PersonnelsDbContext`: inject `ITenantContext`, call both filter extensions, mark site-scoped entities `ISiteEntity`, add `ISoftDeletable` where delete = soft (Day 15 + [Day 16](./day-16-multi-tenancy.md)).
+
+**Cross-link:** [Day 15 — Inventory gap](./day-15-soft-delete.md#smell-ha) | [Day 16 — TenantFilter](./day-16-multi-tenancy.md)
+
+---
+
+## 10 soal-e ezafe (mosahebe)
+
+21. **Chera Fluent API na Data Annotations?** — Domain pure, mapping Infrastructure
+22. **DbContextPool chera na darim?** — standard Scoped AddDbContext; pool for high churn APIs optional
+23. **Difference Outbox interceptor vs MT EF outbox?** — custom table + Quartz vs MT tables + bus
+24. **Chera internal DbSet?** — force repository boundary
+25. **JSON companion list query?** — rare; mostly display-only
+26. **Migration per schema conflict?** — without history per schema, modules stamp on each other
+27. **ExecuteDelete va soft-delete filter?** — global filter applies unless IgnoreQueryFilters
+28. **Reporting 9 DbContexts?** — pragmatic Stimulsoft; coupling cost
+29. **uuid[] ContractIds?** — Npgsql primitive collection mapping
+30. **How test filters?** — integration test with TenantContext fake + assert SQL/site scope
+
+---
+
+*Day 13 tamum. Ba'd: Day 14 — Repository + Unit of Work. Fehrest: [README.md](./README.md). Related: [Day 15 Soft Delete](./day-15-soft-delete.md), [Day 16 Multi-tenancy](./day-16-multi-tenancy.md).*

@@ -564,6 +564,226 @@ Frontend Day 27 = React Hook Form + **Zod** — haman idea (schema validation) o
 
 ---
 
+## Deep dive — `ValidationPipelineBehavior` + reflection bridge
+
+Constraint Dejban:
+
+```csharp
+where TRequest : IBaseCommand
+where TResponse : IErrorOr
+```
+
+Flow:
+1. `IEnumerable<IValidator<TRequest>>` — 0 validator → pass through
+2. `Task.WhenAll(ValidateAsync)` — parallel validators
+3. `ValidationFailure` → `Error.Validation(code: PropertyName, description: Message)`
+4. `typeof(TResponse).GetMethod(nameof(ErrorOr<object>.From))` invoke static **From(List<Error>)**
+5. Age reflection fail → `throw new ValidationException` (fallback)
+
+**Microservice `ValidationBehavior`:** `IRequest<TResponse>` — **queries ham** validate mishan.
+
+| | Dejban | ACL/Identity |
+|---|---|---|
+| constraint | `IBaseCommand` | any `IRequest` |
+| queries validated | na (by default) | bale |
+
+---
+
+## Deep dive — ErrorOr `Match` patterns
+
+```csharp
+// Minimal API — value
+return result.Match(Results.Ok, ApiResults.Problem);
+
+// NoContent
+return result.Match(_ => Results.NoContent(), ApiResults.Problem);
+
+// Created with route
+return result.Match(
+    id => Results.Created($"/api/v1/Personnels/{id}", id),
+    ApiResults.Problem);
+
+// Controller ACL
+return (await mediator.Send(request)).Match(Ok, Problem);
+```
+
+**Chain errors:**
+
+```csharp
+ErrorOr<Asset> created = Asset.Create(...);
+if (created.IsError) return created.Errors;
+
+ErrorOr<Success> saved = await Persist(created.Value);
+return saved.IsError ? saved.Errors : Result.Success;
+```
+
+**First error vs all errors:** `ApiResults.Problem` — age **hame** Validation → dictionary; else **first** error only (mixed types).
+
+---
+
+## Deep dive — `ApiResults.Problem` line-by-line
+
+```csharp
+if (errors.All(e => e.Type == ErrorType.Validation))
+    return ValidationProblem(errors); // ASP.NET ValidationProblemDetails
+
+return Problem(errors[0]); // single RFC 7807 ProblemDetails
+```
+
+Mapping:
+- Validation → 400 grouped by `error.Code`
+- Unauthorized → 401
+- Forbidden → 403
+- NotFound → 404
+- Conflict → 409
+- Failure → **400** (Dejban) — na 500
+- default → 500
+
+**Identity `ApiController`:** `title` = Description, Failure sometimes 500 — **cross-service inconsistency** for shared FE client.
+
+---
+
+## Deep dive — Advanced FluentValidation (WORLD + Dejban)
+
+### `Must` / custom logic
+
+```csharp
+RuleFor(x => x.EndDate)
+    .Must((cmd, end) => end >= cmd.StartDate)
+    .WithMessage("End must be after start");
+```
+
+### `RuleForEach` + `SetValidator`
+
+```csharp
+RuleForEach(x => x.Lines).SetValidator(new OrderLineValidator());
+```
+
+### Async rule (rare Dejban)
+
+```csharp
+RuleFor(x => x.Code)
+    .MustAsync(async (code, ct) => !await repo.Exists(code, ct))
+    .WithMessage("Taken");
+```
+
+**Dejban preference:** uniqueness to **handler** `AnyAsync` → `Error.Conflict` — race + unique index.
+
+### Excel import validators
+
+Personnels import: row-level validator + `StaffImportRowEditDialog` — same FluentValidation ideas on **DTO rows**, na faghat commands.
+
+---
+
+## Deep dive — Domain ErrorOr factories (more examples)
+
+```csharp
+// VehiclePlate — value object
+public static ErrorOr<VehiclePlate> CreatePlate(string number, PlateType type)
+{
+    if (string.IsNullOrWhiteSpace(number))
+        return Error.Validation("VehiclePlate.Empty", "...");
+    // ...
+    return new VehiclePlate(number, type);
+}
+
+// SiteErrors, VisitorErrors, AssetErrors — same {Entity}.{Reason} code
+```
+
+**Handler:**
+
+```csharp
+var plate = VehiclePlate.CreatePlate(request.PlateNumber, request.PlateType);
+if (plate.IsError) return plate.Errors;
+```
+
+Presentation **double validation:** endpoint sometimes pre-check plate format — **drift risk** if yek ja update shod yek ja na.
+
+---
+
+## Deep dive — Pipeline order (Dejban)
+
+```
+ExceptionHandlingPipelineBehavior  (outer — catch unexpected)
+RequestLoggingPipelineBehavior
+ValidationPipelineBehavior         (FluentValidation → ErrorOr)
+Handler                              (business ErrorOr)
+```
+
+Validation **qabl** handler — handler **aslan** run nemishe age format fail. Logger hanooz request ra did (depends log level).
+
+**ExceptionHandling:** unexpected throw → Problem 500 — na ErrorOr.
+
+---
+
+## Deep dive — ValidationProblem shape vs single Problem
+
+Multi-field login fail (Identity):
+
+```json
+{
+  "status": 400,
+  "errors": {
+    "UserName": ["الزامی است"],
+    "Password": ["الزامی است"]
+  }
+}
+```
+
+Single NotFound:
+
+```json
+{
+  "status": 404,
+  "title": "Personnel.NotFound",
+  "detail": "پرسنل با شناسه ... یافت نشد"
+}
+```
+
+FE: detect `errors` object vs `title`/`detail`.
+
+---
+
+## Anti-patterns (smell detail)
+
+| smell | fix direction |
+|---|---|
+| DB check in MustAsync everywhere | handler + unique index |
+| throw ValidationException in handler | return Error.Validation |
+| string match on `Description` | use stable `Code` |
+| 5 copy ValidationBehavior | extract Common package |
+| query without validation | add validator or document why |
+
+---
+
+## Chejori in fasl ra «digested» koni (lab — ~45 min)
+
+1. Breakpoint `ValidationPipelineBehavior` — POST personnel bedune NationalCode (10 min)
+2. Inspect response JSON — `errors` dict keys = property names (5 min)
+3. Trigger `Personnel.NotFound` — 404 `title` code (5 min)
+4. Open `CreateVehicleCommandValidator` — trace nested `When` (10 min)
+5. Compare Dejban vs ACL `ValidationBehavior` constraint in IDE (5 min)
+6. Write **1 rule** test: validator + `TestValidate` (FluentValidation test helper) (10 min)
+
+**FluentValidation test (WORLD):**
+
+```csharp
+var result = validator.TestValidate(new CreatePersonnelCommand { FirstName = "" });
+result.ShouldHaveValidationErrorFor(x => x.FirstName);
+```
+
+---
+
+## 5 soal-e ezafe (bonus)
+
+21. **`IErrorOr` marker chi?** — constraint for open generic behavior / ErrorOr.From
+22. **Chera `ErrorOr.From` reflection?** — `TResponse` compile-time unknown; alternative: source generator
+23. **`Result.Updated` vs `Success`?** — semantic void outcomes (if used in codebase)
+24. **ChildRules vs SetValidator?** — inline nested rules vs reusable child validator class
+25. **ValidationException fallback ke?** — TResponse not ErrorOr-compatible — dev misconfig
+
+---
+
 ## Resume
 
 **short:**

@@ -585,4 +585,283 @@ ORDER BY occurred_on_utc LIMIT 20 FOR UPDATE SKIP LOCKED;
 
 ---
 
+## JOIN — deep dive + plan
+
+### Nested Loop vs Hash Join vs Merge Join
+
+| algorithm | vaghti planner entekhab mikone |
+|---|---|
+| **Nested Loop** | outer koochik, inner indexed |
+| **Hash Join** | 2 table bozorg, equality join, RAM baraye hash table |
+| **Merge Join** | 2 taraf ordered roye join key |
+
+`EXPLAIN ANALYZE` → `actual rows` vs `estimate` gap = stale statistics → `ANALYZE table`.
+
+### Anti-join patterns
+
+```sql
+-- visitors bedune hich reservation
+SELECT v.id FROM visitors.visitors v
+LEFT JOIN visitors.visit_reservations r ON r.id = v.... -- (mesal conceptual)
+WHERE r.id IS NULL;
+```
+
+`NOT EXISTS` often = `Anti Semi Join` — same as Day 04 EXISTS section.
+
+### Cross-schema join — momken vali **Dejban nemikone**
+
+```sql
+-- TEORI — anti-pattern to modular monolith BC
+SELECT * FROM visitors.visitors v
+JOIN personnels.personnels p ON p.id = v.host_copy_id;
+```
+
+Production: `visitors.personnels` copy + FK internal to `visitors` schema.
+
+---
+
+## Isolation levels — senario-ha
+
+### Read Committed — duplicate read
+
+Tx1: `SELECT balance FROM accounts WHERE id=1` → 100  
+Tx2: `UPDATE ... SET balance=90` COMMIT  
+Tx1: `SELECT ...` → **90** (non-repeatable)
+
+Baraye report snapshot mitone OK; baraye «check then act» **na** — bayad lock ya Serializable.
+
+### Repeatable Read (Postgres snapshot)
+
+Tx1 dobar same SELECT same snapshot mibine — ta commit. Write skew still possible in some DBs; Postgres RR strong.
+
+### Serializable — card number
+
+Do tx hamzaman `MAX(card)+1` → yeki **rollback** `40001 serialization_failure`. App retry (VisitorCardNumberGenerator).
+
+### Phantom
+
+Tx1: `SELECT COUNT(*) WHERE status='Open'` → 5  
+Tx2: INSERT Open COMMIT  
+Tx1: COUNT dobar → 6 (RC) — Serializable mane mikone.
+
+---
+
+## FOR UPDATE — variants
+
+```sql
+SELECT * FROM visitors.inbox_messages
+WHERE processed_on_utc IS NULL
+ORDER BY occurred_on_utc
+LIMIT 10
+FOR UPDATE;                    -- wait for lock
+
+FOR UPDATE NOWAIT;             -- error furi
+
+FOR UPDATE SKIP LOCKED;        -- skip locked rows — worker queue
+
+FOR SHARE;                     -- shared lock — read consistency
+```
+
+Dejban inbox: `FOR UPDATE` (wait). Multi-instance → throughput sequential on batch; **SKIP LOCKED** improvement candidate.
+
+**EF Core:** raw SQL ya `FromSqlRaw` — LINQ `FOR UPDATE` nist.
+
+---
+
+## Partial index — SQL + EF hamzaman
+
+Database:
+
+```sql
+CREATE UNIQUE INDEX ux_visitor_national_code_live
+ON visitors.visitors (national_code)
+WHERE is_deleted = false
+  AND national_code IS NOT NULL
+  AND national_code <> '';
+```
+
+EF:
+
+```csharp
+builder.HasIndex(e => e.NationalCode)
+    .HasFilter("\"national_code\" IS NOT NULL AND \"national_code\" != ''")
+    .IsUnique();
+```
+
+**Soft-delete reuse:** row deleted → index exclude → same code insert OK.
+
+**BlackList vs Visitor inconsistency:** yeki filter `is_deleted`, yeki na — migration review mohem.
+
+**Interview whiteboard:** «Unique national code with soft delete» → partial unique **bedune** `is_deleted` to index WHERE.
+
+---
+
+## Multi-schema — EF configuration
+
+```csharp
+modelBuilder.HasDefaultSchema("visitors");
+
+modelBuilder.Entity<Visitor>().ToTable("visitors", "visitors");
+// ya convention: schema name = module name
+```
+
+Connection string **yek** `payamgostar_dejban` — search_path default `public` vali table qualified `visitors.visitors`.
+
+**Migration workflow (team process):**
+
+1. Developer entity + `IEntityTypeConfiguration` taghir mide (repo).
+2. **Local:** developer mitone migration **movaghat** besaze baraye test — vali **commit nemikone** migration files (team rule / migrationesho on server).
+3. Server pipeline: migrationesho applies schema after deploy.
+4. **Learning note:** in ketabche entity/config ra yad migiri; SQL roye server sync mishe, na har PR migration file.
+
+In jadidan with `.cursor/rules` ham align-e — entity change OK, Migration class to shared commit **na**.
+
+---
+
+## Savepoints va nested transaction
+
+```sql
+BEGIN;
+  INSERT INTO ...;
+  SAVEPOINT sp1;
+  UPDATE ...; -- fail
+  ROLLBACK TO sp1;
+COMMIT;
+```
+
+EF: `CreateSavepointAsync` (.NET 5+). Kam to Dejban — prefer yek transaction sade.
+
+---
+
+## Connection string va schema search_path
+
+```json
+"Host=...;Database=payamgostar_dejban;Username=..."
+```
+
+Dapper queries **qualified** `visitors.inbox_messages`. Agar unqualified → `public` — bug.
+
+---
+
+## N+1 — EF mesal
+
+```csharp
+var schedules = await repo.GetQueryable().ToListAsync(ct);
+foreach (var s in schedules)
+    _ = s.Host.Name; // N query extra
+```
+
+Fix: `Include(s => s.Host)` ya projection `Select` yek SQL.
+
+---
+
+## Constraint mapping — HTTP
+
+| SQLSTATE | HTTP (Dejban style) |
+|---|---|
+| `23505` unique_violation | 409 Conflict |
+| `23503` foreign_key_violation | 400/404 domain |
+| `40001` serialization_failure | retry |
+| `40P01` deadlock_detected | retry |
+
+---
+
+## Vacuum / bloat — Dejban tables
+
+| table | chera monitor |
+|---|---|
+| `*.inbox_messages` | update processed_on ziad |
+| `*.outbox_messages` | same |
+| high-churn uuid PK | index bloat |
+
+`pg_stat_user_tables` → `n_dead_tup`, `last_autovacuum`.
+
+---
+
+## Dejban — CashLogistics filtered index (mesal)
+
+Migration name hint: `UnitSoftDeleteFilteredIndexes` — pattern soft delete + unique per module copy tables (Day 15 cross-link).
+
+---
+
+## Query plan exercise — GetVisitors search
+
+LINQ:
+
+```csharp
+vit.FirstName.ToLower().Contains(term.ToLower())
+```
+
+Plan: `Seq Scan` on `visitors.visitors` + `Filter` — OK for 5k rows, red flag for 500k.
+
+Fix path: `ILIKE` with `pg_trgm`, or `tsvector`, or external search (Elastic) — **nadari** today.
+
+---
+
+## Senario whiteboard
+
+### A) Two workers inbox
+
+Worker1: `FOR UPDATE` 10 rows → process 30s  
+Worker2: **wait** — lag. SKIP LOCKED → worker2 rows 11–20.
+
+### B) Tenant leak SQL
+
+Dapper query bedune `site_id` filter + SuperAdmin false → **leak**. Parity ba EF global filter.
+
+### C) Cross-DB integration
+
+Personnel created Identity DB → event → Visitors inbox → upsert `visitors.personnels`. **No FK** across DBs.
+
+---
+
+## Mini lab (1 session)
+
+1. `docker-compose.yml` — list DB names per service.
+2. `VisitorsDbContext` — `HasDefaultSchema`.
+3. `VisitorConfiguration.cs` — partial unique index filter string.
+4. `ProcessInboxJob.cs` — read `GetInboxMessagesAsync` SQL + FOR UPDATE.
+5. `TenantQueryFilterExtensions.cs` — understand generated WHERE.
+6. psql local (if available): `EXPLAIN ANALYZE` on simple `visitors.visitors` count.
+7. Compare Serializable card generator vs SEQUENCE doc in PostgreSQL.
+
+---
+
+## 15 soal-e ezafe
+
+26. **Hash Join memory?** — work_mem limit; spill to disk
+27. **`FOR SHARE` vs `FOR UPDATE`?** — readers vs writers
+28. **Partial index predicate immutable?** — must match query WHERE
+29. **`schema.table` vs search_path?** — qualified safer
+30. **Cross-schema FK Postgres?** — allowed; Dejban avoids cross-module
+31. **Read replica lag?** — eventual read; Dejban single primary
+32. **`23505` race two INSERT?** — one wins, one retry/409
+33. **GUID v7 benefit?** — insert locality, less bloat
+34. **Materialized view refresh?** — CONCURRENTLY; not used
+35. **RLS vs EF filter?** — defense depth; ops complexity
+36. **Inbox ORDER BY + FOR UPDATE** — lock order deadlock risk if multi-table
+37. **`LIMIT {BatchSize}` interpolation?** — int safe; still prefer parameter style
+38. **JSONB index GIN default?** — `@>` queries
+39. **Migration in repo vs server?** — entity in git; apply on server pipeline
+40. **Database-per-service FK?** — impossible; events only
+
+---
+
+## Chejori digest koni
+
+1. Draw Dejban DB map: 7 micro DB + 1 dejban 8 schema (10 min)
+2. Partial unique whiteboard (10 min)
+3. Isolation level table hafeze (10 min)
+4. Trace inbox SQL (15 min)
+5. 25+15 soal (30 min)
+6. EXPLAIN concept on one slow query from logs (if any)
+
+---
+
+## Resume — paragraph-e bolang (optional)
+
+> Worked with PostgreSQL as the system of record across database-per-microservice boundaries and a schema-per-module modular monolith on a shared instance, applying partial unique indexes for soft-deleted entities, composite indexes aligned to site-scoped list queries, EF global filters for tenant and soft delete, and explicit transaction isolation (Serializable with retry) plus row-level locking (`FOR UPDATE`) for inbox processing and contended sequences—while keeping cross-module integration event-driven rather than cross-schema joins.
+
+---
+
 Day 04 tamum. Ba'd: Day 05 — ASP.NET Core pipeline / DI. Fehrest: [README.md](./README.md).

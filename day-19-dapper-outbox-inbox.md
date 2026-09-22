@@ -531,6 +531,207 @@ Identity / ACL / RequestTracker: MassTransit `AddEntityFrameworkOutbox` — tabl
 
 ---
 
+## Deep dive — Dapper multi-mapping (WORLD)
+
+Gahi yek SELECT chand table join mikone va mikhai **object graph** besazi bedune EF Include:
+
+```csharp
+// splitOn = first column that belongs to type B (usually PK of second table)
+var sql = """
+    SELECT o.id, o.content, c.id, c.name
+    FROM orders o
+    JOIN customers c ON c.id = o.customer_id
+    WHERE o.id = @OrderId
+    """;
+
+await conn.QueryAsync<Order, Customer, Order>(
+    sql,
+    (order, customer) =>
+    {
+        order.Customer = customer;
+        return order;
+    },
+    new { OrderId = id },
+    splitOn: "id"); // second "id" column starts Customer
+```
+
+| pattern | when |
+|---|---|
+| `(A,B)` tuple | flat join, 2 types, no nesting |
+| `QueryAsync<A,B,C,...>` + splitOn | 1-to-1 or many-to-1 join |
+| `QueryMultiple` | 2+ result sets, e.g. header + lines |
+| manual map | weird shapes, aggregates |
+
+**Dejban outbox/inbox:** faghat **yek table** → `QueryAsync<OutboxMessageResponse>` kafi. Multi-map to `PatrolReportService` ya report-ha momken — na to job-ha.
+
+**Smell:** splitOn ghalat → silent wrong mapping (Customer null). Test ba known row.
+
+---
+
+## Deep dive — `Query` sync vs async + connection lifetime
+
+```csharp
+// ✅ job/worker pattern (Dejban)
+await using DbConnection connection = await dbConnectionFactory.OpenConnectionAsync();
+await using DbTransaction transaction = await connection.BeginTransactionAsync();
+// ... QueryAsync / ExecuteAsync with transaction: transaction
+await transaction.CommitAsync();
+// connection disposed → back to NpgsqlDataSource pool
+```
+
+| rule | chi |
+|---|---|
+| `OpenConnectionAsync` per job run | connection short-lived |
+| `NpgsqlDataSource` singleton | pool shared across app |
+| pass `transaction:` to Dapper | same tx as FOR UPDATE |
+| `await using` | return connection to pool |
+
+**Anti-pattern:** static `IDbConnection` singleton — thread-safety + stale state.
+
+**EF vs Dapper same DB:** do pool path (EF internal + DataSource) — monitor `Max Pool Size` age traffic spike.
+
+---
+
+## Deep dive — Outbox write (EF) vs read/process (Dapper)
+
+```csharp
+// InsertOutboxMessagesInterceptor — EF ChangeTracker, na Dapper
+var tenantInfo = TenantContextAccessor.Current;
+
+var outboxMessages = context.ChangeTracker.Entries<Entity>()
+    .SelectMany(e => { e.Entity.ClearDomainEvents(); return domainEvents; })
+    .Select(domainEvent => new OutboxMessage
+    {
+        Id = domainEvent.Id,
+        Content = JsonConvert.SerializeObject(domainEvent, SerializerSettings.Instance),
+        SiteIds = [.. tenantInfo?.SiteIds ?? []],
+        IsSuperAdmin = tenantInfo?.IsSuperAdmin ?? false,
+        ...
+    });
+
+context.Set<OutboxMessage>().AddRange(outboxMessages);
+```
+
+**Chera inja EF?**
+- Domain event-ha **haman SaveChanges** ke aggregate update shode insert mishan → **same transaction** automatic
+- Dapper INSERT joda = risk dual-write / partial commit
+
+**Worker side:** EF change tracker overhead bi-fayde — faghat read JSON + dispatch handler.
+
+---
+
+## Deep dive — Tenant restore to background (Day 16 link)
+
+```
+HTTP request → TenantContextMiddleware → AsyncLocal
+  → SaveChanges → outbox row stores site_ids + is_super_admin snapshot
+
+ProcessOutboxJob:
+  TenantContextAccessor.SetContext(outboxMessage.SiteIds, outboxMessage.IsSuperAdmin)
+  → handler EF queries get TenantFilter again
+```
+
+**IntegrationEventConsumer** ham snapshot az `TenantContextAccessor.Current` (MassTransit consume filter publish kard) → inbox row.
+
+**Leak scenario:** consumer bedune filter + empty SiteIds → handler ba tenant khali → filter hame chiz ra filter mikone ya SuperAdmin false → **0 row updated**. Test: inbox row SiteIds non-empty ba'd az cross-module event.
+
+---
+
+## Deep dive — Idempotent decorator + connection per handler
+
+Idempotent handlers (`IdempotentDomainEventHandler`) typically:
+1. `OpenConnectionAsync` (ya connection az outer scope)
+2. `ExecuteScalarAsync<bool>` EXISTS on `{schema}.outbox_message_consumers`
+3. age true → return (skip)
+4. `await decorated.Handle(...)`
+5. `INSERT` consumer row
+
+**Race:** do worker parallel (bedune SKIP LOCKED ya do handler instance) — unique index roye `(outbox_message_id, name)` **last line** (age migration/server dare).
+
+**Crash between 4 and 5:** at-least-once → handler dobare run → business side bayad idempotent ya EXISTS save.
+
+---
+
+## Deep dive — Json.NET polymorphism to outbox
+
+`SerializerSettings.Instance` + `IDomainEvent` deserialize:
+- `$type` ya custom resolver lazem — agar settings avaz she, worker **fail** → `error` column + processed (no retry)
+
+**Interview:** «chejori version event payload?» — backward-compatible fields, new event types, na rename-e breaking bedune migration data.
+
+---
+
+## Deep dive — Quartz wiring (ConfigureProcessOutboxJob)
+
+Har module:
+- `services.ConfigureOptions<ConfigureProcessOutboxJob>()`
+- Quartz job identity = `typeof(ProcessOutboxJob).FullName`
+- Trigger interval az `OutboxOptions` (modules JSON)
+
+`[DisallowConcurrentExecution]` = **yek thread** in job type per scheduler — vali **chand Dejban.Api instance** = chand scheduler = hanooz FOR UPDATE block (unless SKIP LOCKED).
+
+---
+
+## EF raw SQL escape hatch (contrast)
+
+```csharp
+// EF Core 8+
+await db.Database.SqlQuery<OutboxMessageResponse>(sql).ToListAsync();
+```
+
+Dejban **nemire** in masir baraye jobs — Dapper explicit, module-agnostic factory. EF `FromSqlRaw` ba entity tracked = mix smell.
+
+---
+
+## Decision tree — Dapper ya EF?
+
+```
+Need change tracker / domain graph?
+  YES → EF
+Need FOR UPDATE batch job?
+  YES → Dapper (or EF + raw SQL — heavier)
+Cross-schema report, read-only, hot path?
+  → Dapper OK (PatrolReportService)
+Outbox insert same tx as aggregate?
+  → EF interceptor (Dejban)
+```
+
+---
+
+## Chejori in fasl ra «digested» koni (lab — ~45 min)
+
+1. **SQL log:** yek create personnel → `personnels.outbox_messages` row ba `processed_on_utc NULL` (5 min)
+2. **Wait 5s** → row processed; `content` JSON ra baz kon — type name domain event (5 min)
+3. Breakpoint `ProcessOutboxJob.Execute` — SiteIds restore (10 min)
+4. RabbitMQ management UI — queue `personnel-created` message count ba publish (5 min)
+5. Duplicate delivery simulate — inbox `ON CONFLICT` → still 1 row (5 min)
+6. **Thought experiment:** SQL `FOR UPDATE SKIP LOCKED` — 2 worker che row migirin? (5 min)
+7. 20 soal bala + 5 zir ra boland javab bede (10 min)
+
+**Optional SQL playground (local DB):**
+
+```sql
+BEGIN;
+SELECT id FROM visitors.outbox_messages
+WHERE processed_on_utc IS NULL
+ORDER BY occurred_on_utc LIMIT 5
+FOR UPDATE;
+-- session 2: same query → blocks (no SKIP LOCKED)
+ROLLBACK;
+```
+
+---
+
+## 5 soal-e ezafe (bonus)
+
+21. **Chera LIMIT to SQL string interpolate shode?** — int from options, na user input; parameter ham behtar baraye plan cache
+22. **NpgsqlDataSource vs `new NpgsqlConnection`?** — pooling + central config
+23. **Inbox vs outbox consumer table?** — same idempotency idea, joda schema/table baraye domain vs integration handlers
+24. **Handler publish integration event toinside outbox job?** — chain: domain handler → `IEventBus` → Rabbit → inbox; outbox row still marks processed even if bus down? (depends handler — bus publish failure → exception → error column)
+25. **GuidListHandler chi kar mikone?** — map Postgres `uuid[]` ↔ `List<Guid>` for Dapper params/results
+
+---
+
 ## Resume
 
 **short:**
@@ -568,4 +769,5 @@ Identity / ACL / RequestTracker: MassTransit `AddEntityFrameworkOutbox` — tabl
 
 ---
 
-Day 19 tamum. Ba'd: Day 20 — MassTransit + RabbitMQ. Fehrest: [README.md](./README.md).
+*Day 19 tamum. Ba'd: Day 20 — MassTransit + RabbitMQ (amade). Fehrest: [README.md](./README.md).*
+

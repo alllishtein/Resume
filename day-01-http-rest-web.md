@@ -588,6 +588,182 @@ HTTP DELETE mitone body dashte bashe, vali proxy-haye ghadimi gahi body ra minda
 19. CSRF ba JWT header? — attacker Bearer ra nadare; cookie-only still sensitive
 20. HTTP/2 chie? — multiplex-e chand stream roye 1 TCP
 
+---
+
+## Deep dive — Status code decision tree (API design)
+
+```
+Success with body (GET/list/detail)?
+  → 200 OK
+Created new resource?
+  → 201 Created + Location (Dejban gahi 200 + {id} — document mismatch)
+Success, no body (update/delete)?
+  → 204 No Content
+Accepted async job?
+  → 202 Accepted + poll URL (kam dar Dejban)
+
+Client sent bad JSON / validation?
+  → 400 (+ ValidationProblem)
+Not authenticated?
+  → 401
+Authenticated, no permission?
+  → 403
+Resource missing?
+  → 404
+Duplicate / state conflict?
+  → 409
+Rate limited?
+  → 429 + Retry-After
+
+Unhandled bug?
+  → 500
+Gateway upstream dead?
+  → 502 / 504
+```
+
+**502 vs 504:** 502 = bad/invalid response from upstream; 504 = upstream **timeout**. FE often same toast — debug ba gateway logs.
+
+---
+
+## Deep dive — CORS + credentials (edge cases)
+
+```
+Browser rule:
+  Access-Control-Allow-Origin: *  +  Allow-Credentials: true  → INVALID
+
+Dejban prod:
+  explicit origins + AllowCredentials + AllowAnyHeader/Method
+```
+
+**Preflight cache:** `Access-Control-Max-Age: 86400` → kamtar OPTIONS. Dejban set nashode — SPA ba har custom header (Authorization, X-Site-Id) **non-simple** → OPTIONS.
+
+**Credential request:** `withCredentials: true` → response `Allow-Origin` **cannot** be `*` — bayad exact origin FE.
+
+---
+
+## Deep dive — Cookie + Bearer dual channel
+
+| channel | storage | sent how | risk |
+|---|---|---|---|
+| Access JWT | memory / module `tokenStorage` | `Authorization: Bearer` | XSS read memory if leaked |
+| Refresh | HttpOnly cookie | automatic browser | CSRF if cookie-only API |
+
+Dejban: access to header, refresh to cookie → refresh **na** to JS. Login `Set-Cookie` + body/token access.
+
+**Logout:** server cookie expire + client clear access.
+
+---
+
+## Deep dive — YARP reverse proxy (Dejban)
+
+```
+Client → ApiGateway (YARP)
+  clusters: dejban-cluster, identity-cluster, acl-cluster, ...
+  routes: Path /api/v1/{**catch-all} → cluster by prefix/service map
+  transforms: RequestHeaderOriginalHost, X-Forwarded-Proto
+```
+
+**Chera YARP na faghat Next rewrite?**
+- Next rewrite = **browser** navigation sub-apps (`/dejban` → port 3034)
+- YARP = **API** traffic `:443` → backend Kestrel `:5042` etc.
+- SignalR / file upload / long request — YARP tuned for proxy
+
+**Token query middleware:** `?access_token=` for WebSocket/Stimulsoft → copy to `Authorization` — **security smell** (logs, Referer).
+
+---
+
+## Deep dive — Asp.Versioning URL
+
+```csharp
+// endpoint group
+app.MapGroup("/api/v{version:apiVersion}/Visitors")
+   .HasApiVersion(1.0);
+```
+
+Response header: `api-supported-versions: 1.0` — FE mitone detect. Breaking change → v2 route parallel, deprecate v1.
+
+---
+
+## Deep dive — FE axios error surface
+
+`packages/api-client/src/axiosInstance.ts`:
+- **401:** refresh single-flight (`refreshPromise`) → retry original; fail → sign-in redirect
+- **403:** toast — logout **na**
+- **Public ticket** URLs skip refresh loop
+- **Digits:** Persian → English normalization on params/body (search consistency)
+
+`getErrorMessage` / Day 09: `ProblemDetails.detail` ya validation `errors` dict → UI string.
+
+**Gap:** 429 no backoff — user spam click → hammer gateway.
+
+---
+
+## Dejban endpoint examples (beyond Reservations)
+
+| area | pattern | note |
+|---|---|---|
+| Personnels | `POST /Personnels/Create`, `GET` list | command + ErrorOr |
+| Vehicles | multipart + nested owner rules | large payload |
+| Auth (Identity) | `/auth/login` lowercase path | cookie + Problem shape |
+| Reports Stimulsoft | GET + query token | header limitation workaround |
+| Health | `/health` anonymous | k8s probe |
+
+**OpenAPI / Scalar:** dev doc from Minimal API metadata + tags per module.
+
+---
+
+## ProblemDetails — FE consumption tips
+
+```javascript
+// validation 400
+const errors = error.response?.data?.errors;
+// { NationalCode: ["الزامی است"], ... }
+
+// single business error
+const title = error.response?.data?.title; // stable code: Personnel.NationalCodeExists
+const detail = error.response?.data?.detail; // human Persian
+```
+
+Switch UI on **`title`**, show user **`detail`**. Identity sometimes swaps — handle both services in FE if shared client.
+
+---
+
+## HTTP semantics — practical REST cheatsheet (Dejban)
+
+| action | prefer | Dejban reality |
+|---|---|---|
+| List + filter | GET + query | ✅ |
+| Create | POST 201 | POST 200 sometimes |
+| Full replace | PUT 204 | ✅ reservations |
+| Partial | PATCH 204 | ✅ allow/deny items |
+| Delete one | DELETE 204 | ✅ |
+| Bulk delete | DELETE body / POST Delete | ⚠️ both exist |
+| Workflow | POST verb path | ✅ Import, Login |
+
+---
+
+## Chejori in fasl ra «digested» koni (lab — ~40 min)
+
+1. DevTools Network: yek POST — OPTIONS? headers? (5 min)
+2. 401 force — watch refresh + retry duplicate (10 min)
+3. Gateway vs direct Dejban port — same ProblemDetails? (5 min)
+4. curl **bedune** CORS — API still works (5 min)
+5. Compare 403 vs 401 toast behavior (5 min)
+6. Read `ApiResults.cs` mapping table (5 min)
+7. 20 soal boland (5 min)
+
+---
+
+## 5 soal-e ezafe (bonus)
+
+21. **Chera fragment (#) server nemibine?** — client-only routing
+22. **HEAD vs GET?** — metadata/cache check bedune body
+23. **307 vs 302 for POST redirect?** — method preservation
+24. **Hop-by-hop header chi?** — proxy strip list
+25. **YARP vs nginx to interview?** — both L7 reverse proxy; YARP native .NET config code-first
+
+---
+
 ## Resume
 
 **short:**

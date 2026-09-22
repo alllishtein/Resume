@@ -498,4 +498,352 @@ Dejban modular monolith = jiddi-tar Clean Architecture. Standalone = pragmatism 
 
 ---
 
-*Day 14 tamum. Ba'd: Day 15 — Soft Delete. Fehrest: [README.md](./README.md).*
+## IQueryable smell — deep dive
+
+### Chi mishe vaghti leak mikoni?
+
+```csharp
+// Application layer
+await visitorRepository.GetQueryable()
+    .Where(v => v.NationalCode == code)
+    .Include(v => v.VisitorType)
+    .AsNoTracking()
+    .SingleOrDefaultAsync(ct);
+```
+
+Application **EF-specific** (`Include`, `AsNoTracking`) midanad. Test unit ba mock `IQueryable` = in-memory provider ya integration test.
+
+### SQL ke EF misaze
+
+Hamoon query → yek SELECT ba JOIN. **Moshkel performance na IQueryable** — moshkel **boundary** va **testability**.
+
+### Refactor ladder (bedune big-bang)
+
+| level | pattern | effort |
+|---|---|---|
+| 0 | `GetQueryable()` + handler LINQ | **Dejban default** |
+| 1 | Repo method: `GetByNationalCodeWithTypeAsync` | kam, targeted |
+| 2 | Query object `VisitorListSpec` to Application | medium |
+| 3 | Dapper read model / projection SQL | CQRS read side |
+| 4 | Separate read DB | enterprise |
+
+### Specification (world) — mesal
+
+```csharp
+public sealed class ActiveVisitorsBySiteSpec : Specification<Visitor>
+{
+    public ActiveVisitorsBySiteSpec(Guid siteId) =>
+        Query.Where(v => v.SiteId == siteId); // internal to infra
+}
+```
+
+Interface Application **Specification nadare** — faqat method `GetActiveBySiteAsync`.
+
+### Smell-haye IQueryable to handler
+
+- `GetQueryable()` bedune `AsNoTracking` to list → tracker bloat
+- `.ToList()` sync (Day 02) → thread block
+- `Include` 5 level to handler → graph explosion (N+1 ya wide JOIN)
+- Filter tenant **faramosh** ba raw SQL / IgnoreQueryFilters
+
+---
+
+## Transaction va BeginTransaction — chera thin UoW kafi nist?
+
+`SaveChangesAsync` = **implicit transaction** (yek batch). Kafi baraye 95% command-ha.
+
+**Explicit transaction** vaghti:
+
+- Chand `SaveChanges` to yek atomic unit (kam to Dejban — prefer yek SaveChanges)
+- Raw SQL + EF hamzaman
+- Serializable isolation (card generator)
+- Dapper inbox + mark processed
+
+```csharp
+await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
+try
+{
+    // mutations ...
+    await db.SaveChangesAsync(ct);
+    await tx.CommitAsync(ct);
+}
+catch
+{
+    await tx.RollbackAsync(ct);
+    throw;
+}
+```
+
+**ExecutionStrategy:** kole block dakhele `ExecuteAsync` ta retry transient (deadlock, serialization failure).
+
+**Outbox:** interceptor roye `SavingChanges` — outbox row **haman** transaction. Repo Insert + UoW SaveChanges = outbox automatic (Day 13).
+
+**Anti-pattern:** `BeginTransaction` to repo — boundary bayad Application/ handler bashe.
+
+---
+
+## Dejban module map — repo + UoW (8 module)
+
+| module | DbContext | IUnitOfWork | repo style |
+|---|---|---|---|
+| Visitors | `VisitorsDbContext` | factory → same instance | `IVisitorRepository` + GetQueryable |
+| Personnels | `PersonnelsDbContext` | factory | `IPersonnelRepository` + **Entry smell** |
+| Vehicles | `VehiclesDbContext` | factory | heavy `GetByIdAsync` graph |
+| Armory | `ArmoryDbContext` | factory | weapon/asset repos |
+| Inventory | `InventoryDbContext` | factory | products/assets |
+| CashLogistics | `CashLogisticsDbContext` | factory | stations/paths |
+| SecurityPatrols | `SecurityPatrolsDbContext` | factory | patrol shifts |
+| WeighBridge | `WeighBridgeDbContext` | factory | traffic/weigh |
+
+Har module **Presentation + Application + Domain + Infrastructure** — repo interface to **Domain** (Visitors, Personnels) ya Application abstractions (ba'zi modules).
+
+**Cross-module:** `Visitors` copy `personnels`, `sites`, `units` — repo `IPersonnelRepository` to Visitors module baraye **read model**, na join be `personnels.personnels`.
+
+---
+
+## Armory + Inventory — mesal-ha
+
+### Delete ba GetQueryable (bulk soft/command)
+
+Pattern:
+
+```csharp
+await cartridgeDefinitionRepository.GetQueryable()
+    .Where(x => ids.Contains(x.Id))
+    .ExecuteUpdateAsync(setters => setters.SetProperty(...), ct);
+```
+
+Repo **query root** mide; handler filter. `ExecuteUpdate` EF 7+ — bedune load to memory.
+
+### Inventory `GetProductQueryHandler`
+
+```csharp
+var product = await productRepository.GetQueryable()
+    .AsNoTracking()
+    .SingleOrDefaultAsync(p => p.Id == id, ct);
+```
+
+Read single — mitone `GetByIdAsync` to repo ham bashe (consistency).
+
+---
+
+## Vehicles — aggregate load
+
+`VehicleRepository.GetByIdAsync` — Cargo, Construction, Ownerships, Assignments+Personnel. **Yek ja Include** ta handler graph nafahme.
+
+Write path: `Add(vehicle)` + `SaveChangesAsync` — ownership lines via aggregate root.
+
+---
+
+## Personnels — IUnitOfWork.Entry smell
+
+```csharp
+unitOfWork.Entry(personnel).Reference(p => p.Camera).LoadAsync(ct);
+```
+
+Application layer **EF API** midanad. Behtar:
+
+```csharp
+await personnelRepository.GetWithCameraAsync(id, ct);
+```
+
+Interview: «Repo vs UoW responsibility?» — Repo load/save aggregate; UoW commit; **na** expose ChangeTracker unless pragmatic shortcut.
+
+---
+
+## GateServer — generic repo vs Dejban (jadval)
+
+| aspect | GateServer | Dejban modules |
+|---|---|---|
+| Repo | `IRepositoryPattern<T>` generic | `IVisitorRepository` specific |
+| UoW | `UnitOfWorkPattern` wrapper class | DbContext implements `IUnitOfWork` |
+| DbContext | does not implement IUnitOfWork interface directly | `VisitorsDbContext : DbContext, IUnitOfWork` |
+| Query | mix | `GetQueryable()` pervasive |
+| SaveChanges in repo | **sometimes** (smell) | **no** — handler only |
+
+```csharp
+// GateServer — UnitOfWorkPattern.cs
+public async Task<int> SaveChangesAsync()
+    => await _context.SaveChangesAsync();
+```
+
+Sade — faqat delegate. Dejban factory pattern **same scoped DbContext** guarantee mikone.
+
+**Onboarding:** developer az GateServer miad → faghat CRUD generic. Dejban → domain language + MediatR.
+
+---
+
+## Identity / ACL — chera DbContext?
+
+IdentityServer command handlers:
+
+```csharp
+public class CreateUnitCommandHandler(ApplicationDbContext db) { ... }
+```
+
+**Dalil-ha (pragmatic):** Identity template, ASP.NET Identity integration, kam aggregate boundary. **Cost:** test = in-memory EF ya integration; Clean Architecture kamtar strict.
+
+ACL: specialized repos baraye sync-heavy paths; baghie DbContext.
+
+**Org reality:** do style — mosahebe «tradeoff pragmatism vs purity».
+
+---
+
+## Testing — unit, integration, repo
+
+### Handler unit (preferred)
+
+```csharp
+var visitors = Substitute.For<IVisitorRepository>();
+var uow = Substitute.For<IUnitOfWork>();
+var handler = new CreateVisitorCommandHandler(visitors, ..., uow);
+
+await handler.Handle(cmd, ct);
+
+visitors.Received(1).Insert(Arg.Any<Visitor>());
+await uow.Received(1).SaveChangesAsync(ct);
+```
+
+### Query ba IQueryable — integration
+
+```csharp
+await using var ctx = CreateVisitorsDbContext(options);
+SeedVisitors(ctx);
+var repo = new VisitorRepository(ctx);
+var query = repo.GetQueryable().Where(...);
+var list = await query.ToListAsync();
+```
+
+In-memory provider **limitations** — Postgres-specific filter/partial index test na.
+
+### Fake repo bedune EF
+
+```csharp
+class FakeVisitorRepo : IVisitorRepository
+{
+    private readonly List<Visitor> _data = [];
+    public IQueryable<Visitor> GetQueryable() => _data.AsQueryable();
+}
+```
+
+`Include` / global filter simulate **nemishe** — faqat logic-e sade.
+
+---
+
+## Outbox + Inbox va repo boundary
+
+| path | repo? | note |
+|---|---|---|
+| Command handler | **bale** | Insert aggregate → SaveChanges → outbox row |
+| ProcessOutboxJob | **na** | Dapper/SQL update processed |
+| ProcessInboxJob | **na** | Dapper poll + scope + handlers (may use repos inside scope) |
+| Integration event handler | **bale** | e.g. upsert read-model personnel |
+
+**Lesson:** repo = domain writes; infrastructure jobs = raw SQL OK for mechanical tables.
+
+---
+
+## Read-model repos to Visitors
+
+`DoorRepository`, `PersonnelRepository` (Visitors.Infrastructure) — copy tables. Methods:
+
+- `GetQueryable()` baraye lookup
+- Upsert az inbox handler
+
+Na aggregate root Personnels — **BC boundary**.
+
+---
+
+## Naming inconsistency — cheat sheet
+
+| verb | modules |
+|---|---|
+| `Insert` | Visitors, Personnels |
+| `Add` | Vehicles |
+| `CreateAsync` | GateServer generic |
+| `Remove` / `RemoveRange` | Visitors |
+| `SoftDeleteBySiteIdAsync` | Personnels |
+
+Greenfield: yek convention (`Insert` aggregate, `Add` child entity optional). Refactor cost bala — document in booklet.
+
+---
+
+## Debug checklist («SaveChanges fail / double commit»)
+
+1. Handler 2 bar `SaveChangesAsync`? — usually OK (2 tx) — intentional?
+2. Repo dakhel SaveChanges? — GateServer smell
+3. Multiple DbContext to yek request? — 2 UoW — data inconsistency
+4. Tracked entity from GetAsync + query update — accidental
+5. Outbox duplicate — same SaveChanges?
+6. Transaction isolation — serialization failure loop?
+7. Tenant filter — insert SiteId set?
+8. Soft delete — Remove vs SoftDelete method?
+
+---
+
+## Senario whiteboard
+
+### A) Create visitor + blacklist check
+
+Handler: `blackListRepository.GetQueryable()...` + `visitorRepository.Insert` + `SaveChangesAsync`. **Yek UoW** — blacklist read, visitor write, outbox.
+
+### B) Cross-module personnel name
+
+**Na** join — read `visitors.personnels` copy. Stale name until event processed.
+
+### C) Refactor GetQueryable
+
+Extract `GetVisitorsQueryHandler` filter to `GetPagedVisitorsAsync` on repo — handler 10 line kam, test harder unless integration.
+
+---
+
+## Mini lab (1 session)
+
+1. Open `VisitorsModule.cs` — trace `AddScoped<IUnitOfWork>` factory.
+2. Compare `IVisitorRepository` vs `GateServer/IRepositoryPattern.cs`.
+3. Read `CreateVisitorCommandHandler` — Insert + SaveChanges.
+4. Read `GetVisitorsQueryHandler` — GetQueryable composition.
+5. Find one `ExecuteUpdateAsync` on GetQueryable (Armory/Inventory).
+6. Personnels `IUnitOfWork` — find `Entry` usage (grep).
+7. Sketch test doubles for one command handler.
+
+---
+
+## 15 soal-e ezafe
+
+21. **`ExecuteUpdateAsync` vs load+update?** — SQL UPDATE bedune hydrate
+22. **Repo return `IQueryable` — thread-safe?** — DbContext scoped; query execute later on same scope
+23. **Chand SaveChanges to yek handler?** — 2 transaction unless explicit tx
+24. **`AddDbContext` + factory UoW chera?** — single instance guarantee
+25. **Read-only repo layer?** — optional; Dejban query = same repo GetQueryable
+26. **Aggregate root repo only?** — VisitorDocument methods on IVisitorRepository OK if part of aggregate
+27. **DbContext as anti-repo?** — Identity style; speed vs purity
+28. **TransactionScope?** — distributed; na baraye single Postgres module
+29. **Repo + raw SQL?** — rare; Dapper jobs separate
+30. **Soft delete to repo?** — `SoftDeleteByUnitIdAsync` batch (Day 15)
+31. **Outbox without repo?** — interceptor on any SaveChanges
+32. **Testing GetQueryable Include?** — integration
+33. **Generic repo + Specification?** — world combo; Dejban na
+34. **Unit of Work Fowler vs EF?** — EF tracker = UoW
+35. **Multiple aggregates one SaveChanges?** — yek tx if same context; domain rule prefer one aggregate per command
+
+---
+
+## Chejori digest koni
+
+1. World: repo vs UoW diagram (10 min)
+2. Dejban: yek command + yek query trace (20 min)
+3. GateServer vs Dejban jadval (5 min)
+4. IQueryable refactor ladder (10 min)
+5. 20+15 soal (25 min)
+6. Mini lab 1–4 (30 min)
+
+---
+
+## Resume — paragraph-e bolang (optional)
+
+> Designed module-scoped Repository and Unit of Work boundaries in a modular monolith: domain-specific repository interfaces, EF Core DbContext registered as `IUnitOfWork` via scoped factory, and MediatR command handlers that mutate through repositories then commit once—aligning transactional outbox emission with aggregate persistence. Pragmatically exposed `GetQueryable()` for read composition while documenting EF leakage trade-offs, contrasted with GateServer’s generic repository pattern and Identity’s direct DbContext usage.
+
+---
+
+*Day 14 tamum. Ba'd: Day 15 — Soft Delete (amade). Fehrest: [README.md](./README.md).*

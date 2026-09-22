@@ -23,10 +23,10 @@ in folder joda az git-e backend/frontend. har fasl ye `.md`.
 | 12 | [day-12-ddd-aggregate-domain-event-value-object.md](./day-12-ddd-aggregate-domain-event-value-object.md) | DDD (aggregate, domain event, value object) |
 | 13 | [day-13-ef-core-npgsql.md](./day-13-ef-core-npgsql.md) | EF Core 10 + Npgsql (multi-schema, migrations) |
 | 14 | [day-14-repository-unit-of-work.md](./day-14-repository-unit-of-work.md) | Repository + Unit of Work |
-| 15 | — | Soft Delete |
-| 16 | — | Multi-tenancy (`X-Site-Id`) |
-| 17 | — | Minimal APIs + `IEndpoint` |
-| 18 | — | Modular DI (`AddXxxModule`) |
+| 15 | [day-15-soft-delete.md](./day-15-soft-delete.md) | Soft Delete |
+| 16 | [day-16-multi-tenancy.md](./day-16-multi-tenancy.md) | Multi-tenancy (`X-Site-Id`) |
+| 17 | [day-17-minimal-apis-iendpoint.md](./day-17-minimal-apis-iendpoint.md) | Minimal APIs + `IEndpoint` |
+| 18 | [day-18-modular-di.md](./day-18-modular-di.md) | Modular DI (`AddXxxModule`) |
 | 19 | [day-19-dapper-outbox-inbox.md](./day-19-dapper-outbox-inbox.md) | Dapper (outbox/inbox) |
 | 20 | [day-20-masstransit-rabbitmq.md](./day-20-masstransit-rabbitmq.md) | MassTransit + RabbitMQ |
 | 21 | — | Transactional Outbox (custom Dejban) |
@@ -69,6 +69,6 @@ in folder joda az git-e backend/frontend. har fasl ye `.md`.
 | 58 | — | GitLab CI + PM2 |
 | 59 | [day-59-algorithms-big-o.md](./day-59-algorithms-big-o.md) | Algorithms + Big-O (mosahebe) |
 
-**Amade:** 00–14, 19–20, 59 · **Khali (—):** 15–18, 21–58
+**Amade:** 00–20, 59 · **Khali (—):** 21–58
 
-Avalin khali: **Day 15 — Soft Delete**
+Avalin khali: **Day 21 — Transactional Outbox (custom Dejban)**

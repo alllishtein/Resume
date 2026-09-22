@@ -476,4 +476,281 @@ Kootah critical section-ha. World-OK. `System.Threading.Lock` jadid-tar vali `ob
 
 ---
 
+## ConfigureAwait — deep dive (library vs app)
+
+Age ye NuGet package minevisi ke `await http.GetAsync` dare, caller mitone WinForms/WPF bashe. Ba `ConfigureAwait(true)` (default), continuation roye UI thread mikhad resume she. Age caller sync block kone (`.Result`), deadlock.
+
+```csharp
+// Common library pattern
+public async Task<T?> GetJsonAsync<T>(Uri url, CancellationToken ct)
+{
+    using var response = await _http.GetAsync(url, ct).ConfigureAwait(false);
+    return await response.Content.ReadFromJsonAsync<T>(ct).ConfigureAwait(false);
+}
+```
+
+To **Dejban.Api** (Kestrel): SyncContext null → `ConfigureAwait(false)` optional. Vali `Dejban.Common.*` packages age ba tool dige reuse shan, `false` defensive-e.
+
+**Anti-pattern:** `ConfigureAwait(false)` to har line + comment spam. Faghat library public API.
+
+---
+
+## Parallel.ForEachAsync — bulk I/O ba control
+
+.NET 6+:
+
+```csharp
+await Parallel.ForEachAsync(
+    deviceIds,
+    new ParallelOptions { MaxDegreeOfParallelism = 4, CancellationToken = ct },
+    async (deviceId, token) =>
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var sender = scope.ServiceProvider.GetRequiredService<IDeviceClient>();
+        await sender.PushAsync(deviceId, payload, token);
+    });
+```
+
+**Ghanun-ha:**
+
+| rule | dalil |
+|---|---|
+| Har iteration **DbContext joda** | DbContext thread-safe nist |
+| `MaxDegreeOfParallelism` set kon | nabayad 10k task hamzaman besaze |
+| CT pass kon | shutdown/cancel |
+| Na baraye CPU sangin | baraye CPU `Parallel.For` / `Task.Run` + limit |
+
+Dejban: fan-out-e device sync mitone in pattern dashte bashe; ziad fan-out ba `Task.WhenAll` roye list-e koochik (Identity endpoint sync).
+
+---
+
+## ValueTask — ke vaght arzesh dare
+
+```csharp
+public ValueTask<Personnel?> GetCachedAsync(Guid id, CancellationToken ct)
+{
+    if (_cache.TryGetValue(id, out Personnel? p))
+        return ValueTask.FromResult(p);  // 0 allocation
+    return new ValueTask<Personnel?>(LoadFromDbAsync(id, ct));
+}
+```
+
+**Pitfall:** consumer dobar await kone roye haman ValueTask → undefined. Age multiple awaiters: `.AsTask()`.
+
+MediatR handlers `Task<T>` return — OK. ValueTask baraye hot path cache/repository ke 80% sync hit.
+
+---
+
+## IAsyncEnumerable — pagination va stream
+
+```csharp
+public async IAsyncEnumerable<VisitorDto> StreamVisitors(
+    IQueryable<Visitor> query,
+    [EnumeratorCancellation] CancellationToken ct = default)
+{
+    await foreach (var row in query.AsAsyncEnumerable().WithCancellation(ct))
+    {
+        yield return Map(row);
+    }
+}
+```
+
+Minimal API:
+
+```csharp
+return TypedResults.Ok(stream); // ya Results.Stream
+```
+
+Dejban SSE (`GetVisitScheduleLiveUpdates`) az **Channel** estefade mikone, na `IAsyncEnumerable` az DB — vali mental model yeki: producer/consumer async.
+
+`[EnumeratorCancellation]` → compiler CT ro be `WithCancellation` pass mikone.
+
+---
+
+## CancellationToken — checklist-e production
+
+| layer | manba | pass be |
+|---|---|---|
+| HTTP | `CancellationToken ct` param | `sender.Send(cmd, ct)` |
+| MediatR handler | `Handle(..., CancellationToken ct)` | repo `ToListAsync(ct)`, HttpClient |
+| Quartz job | `context.CancellationToken` | loop + IO |
+| HostedService | `stoppingToken` | background loop |
+| MassTransit consumer | `ConsumeContext.CancellationToken` | handler + EF |
+| Linked | `CreateLinkedTokenSource(userCt, timeoutCt)` | har do cancel → stop |
+
+**Smell:** `CancellationToken.None` implicit chon parameter nadashtim.
+
+**Npgsql:** query cancel → connection state check. Gahi better retry transient.
+
+**Cooperative cancel:** loop-haye bozorg `ct.ThrowIfCancellationRequested()` har N iteration.
+
+Fix pattern baraye Minimal API:
+
+```csharp
+group.MapGet("", async ([AsParameters] Q q, ISender sender, CancellationToken ct) =>
+{
+    var result = await sender.Send(q, ct);
+    return result.Match(Results.Ok, ApiResults.Problem);
+});
+```
+
+---
+
+## ThreadPool starvation — senario-ye real
+
+```
+100 concurrent request
+  → har kodam PagedList.CreateAsync
+  → Count() + ToList() SYNC roye thread pool
+  → 100 worker block roye Postgres
+  → request 101+ saf (QueueUserWorkItem)
+  → latency spike, health check fail, cascade
+```
+
+**Symptoms:** `ThreadPool.SetMinThreads` workaround (bad). `dotnet-counters` ThreadPool queue length bala. CPU kam, latency bala.
+
+**Fix hierarchy:**
+
+1. Async ta akhar (`*Async` + CT)
+2. Kam kardan sync-over-async
+3. `Task.Run` faghat CPU, na I/O
+4. Scale out (moagagat) — root cause hanooz sync
+
+---
+
+## GC — LOH, POH, fragmentation
+
+**LOH (> ~85KB):** object roye Large Object Heap. Gen2 collect geran. Excel export buffer, `byte[]` bozorg.
+
+**Mitigation:** `ArrayPool<byte>`, chunk kardan, stream be client.
+
+**POH (.NET 5+):** pinned buffers (network/GC interaction). Kam to app-level.
+
+**Fragmentation:** long-running process + LOH allocate/free → memory hold. Container limit + DATAS mitone help kone.
+
+**Metrics:** `dotnet-gcdump`, EventPipe GC collections, `% Time in GC` < ~10% ideal.
+
+**Interview:** «Chera `GC.Collect()` bad?» — force full collect, pause request path, mask leak.
+
+---
+
+## MassTransit + async to Dejban
+
+Consumer pattern:
+
+```csharp
+public async Task Consume(ConsumeContext<PersonnelCreatedIntegrationEvent> context)
+{
+    await handler.Handle(context.Message, context.CancellationToken);
+}
+```
+
+Inbox job (`ProcessInboxJob`) **async end-to-end** — `OpenConnectionAsync`, `BeginTransactionAsync`, `CommitAsync`, handler-ha ba CT.
+
+**Smell:** inbox loop + `foreach` sequential — throughput limited. Parallel consume = `SKIP LOCKED` (Day 04) + careful tenant scope per message.
+
+Outbox publish **sync ba SaveChanges** — same transaction; async after commit baraye dispatch.
+
+---
+
+## EF Core async — pattern va anti-pattern
+
+| dorost | ghalat |
+|---|---|
+| `await db.Visitors.ToListAsync(ct)` | `db.Visitors.ToList()` |
+| `await query.CountAsync(ct)` | `query.Count()` |
+| `await SaveChangesAsync(ct)` | `SaveChanges()` |
+| `AsNoTracking()` baraye read | tracked list 10k row |
+| `SingleOrDefaultAsync` | `FirstOrDefault` sync |
+
+**Include graph:** `GetByIdAsync` ba Include to repo — 1 round-trip. Handler `GetQueryable().Include(...)` — same, vali leak.
+
+**Compiled queries:** hot path list — optional optimization.
+
+---
+
+## Debug checklist («request hang / CPU 0% / timeout»)
+
+1. Thread dump — worker block roye `Monitor.Wait` / Npgsql?
+2. Sync `ToList()` to hot path?
+3. `.Result` / `Wait()` to stack?
+4. DbContext shared between `Task.WhenAll` branches?
+5. Unbounded Channel RAM?
+6. Lock held during network I/O?
+7. CT pass shode? Client disconnect server edame mide?
+8. Pool exhaustion — connection + thread?
+9. Serializable retry loop bi-payan?
+10. STA pump queue backlog?
+
+---
+
+## Senario whiteboard
+
+### A) User tab bast — query edame?
+
+Endpoint bedune CT → query tamum. Fix: `CancellationToken ct` → MediatR → EF.
+
+### B) Do handler hamzaman yek Visitor update
+
+Yek DbContext per request OK. **Na** 2 request = race; optimistic concurrency / domain rule.
+
+### C) Refresh token single-flight
+
+Frontend `refreshPromise` (axios) = SemaphoreSlim(1,1) — 100×401 → 1 refresh.
+
+### D) Card number race
+
+Serializable + retry + ExecutionStrategy — world alternative: `nextval('card_seq')`.
+
+---
+
+## Mini lab (1 session, ~90 min)
+
+1. `PagedList.cs` bekhoon — `Count()` sync ra trace kon ba breakpoint.
+2. Yek `GetVisitorsQueryHandler` — `AsNoTracking` + projection.
+3. `ProcessInboxJob.cs` — async transaction flow.
+4. `TiamSdkWrapper.cs` — SemaphoreSlim around send.
+5. `dotnet-counters monitor --counters System.Runtime` — under load test (local) ThreadPool queue.
+6. Network tab: request cancel (Abort) — backend CT wired? (identify gap on reservations endpoint)
+7. Optional: rewrite one `CreateAsync` call site ba `CountAsync`/`ToListAsync` mentally — chi avaz mishe?
+
+---
+
+## 15 soal-e ezafe (mosahebe)
+
+26. `Parallel.ForEachAsync` vs `Task.WhenAll`? — built-in throttling vs manual list tasks
+27. `[EnumeratorCancellation]`? — IAsyncEnumerable CT wiring
+28. `IAsyncDisposable` vs `using`? — async dispose path
+29. `ExecutionContext` vs `AsyncLocal`? — flow vs tenant (Day 16)
+30. Chera `Task.Run` to ASP.NET request bad? — pool steal baraye fake async
+31. `ValueTask` pool? — .NET 7+ pooling for async paths
+32. `ConfigureAwaitOptions.ForceYielding`? — always yield even sync complete
+33. `PeriodicTimer` vs `Timer`? — async await friendly
+34. `IDbContextFactory` vs scoped? — parallel work / background
+35. Channel `SingleReader`? — perf when true
+36. `pg_advisory_xact_lock` vs app Mutex? — cross-pod DB lock
+37. `DisallowConcurrentExecution` Quartz? — no overlap same job
+38. `IOCP` role? — complete async socket without blocking thread
+39. DATAS vs fixed Server heap? — adapt to live set in container
+40. `FrozenDictionary` + async? — sync read after build; build once at startup
+
+---
+
+## Chejori digest koni
+
+1. World: thread vs task diagram (10 min)
+2. Trace yek GET visitor: endpoint → MediatR → EF (15 min)
+3. List 5 smell Dejban + fix (10 min)
+4. 25+15 soal boland (25 min)
+5. GC generations + LOH mesal (10 min)
+6. Mini lab items 1–3 (30 min)
+
+---
+
+## Resume — paragraph-e boland (optional)
+
+> Operated async-first ASP.NET Core services where performance under load depended on eliminating sync-over-async (PagedList, legacy reporting), propagating `CancellationToken` from HTTP and Quartz through MediatR to Npgsql, and using Channels for live SSE with awareness of unbounded-buffer risks. Applied PostgreSQL advisory transaction locks and EF `ExecutionStrategy` with Serializable isolation for contended sequences, isolated STA device SDK work via dedicated pump threads, and used `SemaphoreSlim` for single-flight device SDK calls—while monitoring thread-pool queue depth and DATAS GC behavior in containerized deployments.
+
+---
+
 Day 02 tamum. Ba'd: Day 03 — OOP + SOLID + patterns. Fehrest: [README.md](./README.md).

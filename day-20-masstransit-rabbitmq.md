@@ -509,6 +509,205 @@ Har do transactional — implementation fargh.
 
 ---
 
+## Deep dive — `ConfigureConsumers` per module (Dejban)
+
+Har module yek static delegate be `InfrastructureConfiguration` midahad:
+
+```csharp
+// VisitorsModule.cs (pattern repeated × 8)
+public static Action<IRegistrationConfigurator> ConfigureConsumers =>
+    configure =>
+    {
+        configure.AddRequestClient<HasApprovedRequestStep>();
+
+        configure.AddConsumer<IntegrationEventConsumer<SiteCreated>>();
+        configure.AddConsumer<IntegrationEventConsumer<PersonnelCreated>>();
+        // ... Site, Unit, Contractor, Door, Request*, AccessLog, ...
+    };
+```
+
+**InfrastructureConfiguration:**
+
+```csharp
+foreach (Action<IRegistrationConfigurator> configureConsumers in moduleConfigureConsumers)
+    configureConsumers(configure);
+
+configure.SetKebabCaseEndpointNameFormatter();
+configure.UsingRabbitMq((context, cfg) =>
+{
+    cfg.UseTenantContextFilters(context);
+    cfg.UseMessageRetry(...);
+    cfg.UseCircuitBreaker(...);
+    foreach (var moduleReceive in moduleConfigureReceiveEndpoints)
+        moduleReceive(cfg, context);
+    cfg.ConfigureEndpoints(context);
+});
+```
+
+| piece | role |
+|---|---|
+| `ConfigureConsumers` | **register** consumer types + request clients |
+| `ConfigureReceiveEndpoints` | optional manual receive endpoint tweak (often **empty stub**) |
+| `ConfigureEndpoints` | MassTransit auto-bind consumer → queue name |
+
+**Smell:** `// configure.AddConsumers(Assembly)` commented — har event **dasti** `AddConsumer<IntegrationEventConsumer<T>>` → compile-time list, vali boilerplate ziad.
+
+---
+
+## Deep dive — Tenant filters roye bus
+
+```csharp
+// TenantContextMassTransitExtensions.cs
+cfg.UseConsumeFilter(typeof(TenantContextConsumeFilter<>), context);
+cfg.UsePublishFilter(typeof(TenantContextPublishFilter<>), context);
+cfg.UseSendFilter(typeof(TenantContextSendFilter<>), context);
+```
+
+**Publish:** vaghti domain handler `eventBus.PublishAsync(PersonnelCreated)` — filter site context ra to message headers/metadata carry mikone.
+
+**Consume:** `IntegrationEventConsumer` `TenantContextAccessor.Current` → snapshot to inbox `site_ids`.
+
+**Send (RPC):** request client ham bayad tenant dashte bashe ta downstream query dorost filter she.
+
+Bedune in: integration handler to Visitors module ba tenant khali — read-model sync eshtebah.
+
+---
+
+## Deep dive — Endpoint naming + queues
+
+| C# type | default queue (KebabCase) |
+|---|---|
+| `PersonnelCreated` consumer | `personnel-created` |
+| `PersonnelCreatedConsumer` + `InstanceId = "ACLServer"` | `personnel-created-aclserver` |
+
+MassTransit RabbitMQ:
+- publish → **exchange** (type name based)
+- consumer endpoint → **queue** bind shode
+
+`definitions.json` queues **pre-declare** — MassTransit runtime ham topology misaze. **Drift:** queue name avaz shod, definitions ghadimi → startup warning / missing bind.
+
+---
+
+## Deep dive — Retry vs circuit breaker (interaction)
+
+```
+Message fail (transient DB)
+  → Retry 1..5 exponential (1s → … → 5min cap)
+  → Still fail → move toward error/dead-letter (MT default behavior)
+Many messages fail together
+  → Circuit opens (15 failures / 1 min tracking)
+  → Pause consume 5 min (ResetInterval)
+  → Half-open retry
+```
+
+**Na haman outbox job retry:** Dejban module inbox/outbox **Quartz** retry nadare (Day 19). MassTransit retry **faghat roye IConsumer.Consume** — baraye `IntegrationEventConsumer` insert inbox, insert fail → retry; insert success → OK.
+
+**ACL consumer** ba EF outbox: consume + SaveChanges + bus outbox flush — retry mitone duplicate side-effect bede age consumer idempotent nist.
+
+---
+
+## Deep dive — Request/response registration
+
+```csharp
+// Visitors module
+configure.AddRequestClient<HasApprovedRequestStep>();
+
+// Handler (conceptual)
+IRequestClient<HasApprovedRequestStep> client;
+var response = await client.GetResponse<HasApprovedRequestStepResponse>(
+    new HasApprovedRequestStep(sourceId), ct);
+```
+
+| topic | note |
+|---|---|
+| Timeout | default MT timeout — RPC hang = UX block |
+| Outbox skip | ACL callback `get-*` endpoints bedune EF outbox — latency kamtar |
+| Coupling | Visitors **depends** RequestTracker up — fallback? |
+
+**Alternative WORLD:** HTTP internal API + Polly — Dejban bus-first baraye cross-microservice.
+
+---
+
+## Deep dive — PublishBatch
+
+```csharp
+Task PublishBatchAsync<T>(IEnumerable<T> events, CancellationToken ct);
+```
+
+Agar handler chand integration event yekja — kamtar round-trip. Hanooz **har event** masir Rabbit joda (na transaction across messages).
+
+---
+
+## Event catalog (sample contracts)
+
+| Event | producer (typical) | consumers (typical) |
+|---|---|---|
+| `PersonnelCreated` | Personnels outbox handler | Visitors/Vehicles inbox, ACL, RT |
+| `SiteCreated` | Sites module | read-models across modules |
+| `RequestStepApproved` | RequestTracker | Visitors reservation lock |
+| `AccessLogCreated` | ACL / devices | reporting paths |
+
+**Fat event:** `PersonnelCreated` projection kamel — consumer ACL user misaze bedune DB call digar; **versioning** sakht — field hazf = break.
+
+**Thin event:** faghat `PersonnelId` — consumer query bezane — coupling kamtar, traffic bishtar.
+
+Dejban = **fat** baraye ACL/RT speed.
+
+---
+
+## Custom outbox vs MassTransit EF Outbox — timeline
+
+```
+[Dejban module]
+  T0: SaveChanges + outbox row (EF)
+  T1: Quartz poll (Dapper FOR UPDATE)
+  T2: Domain handler → Publish
+  T3: IntegrationEventConsumer → inbox INSERT
+  T4: Quartz inbox → upsert read model
+
+[ACLServer]
+  T0: Consumer message OR local command SaveChanges
+  T1: EF OutboxMessage + BusOutbox flush
+  T2: Rabbit publish atomic with DB (same pattern intent)
+```
+
+Har do **at-least-once** — idempotency layer joda.
+
+---
+
+## Monitoring / ops (WORLD checklist)
+
+- RabbitMQ management: queue depth, unacked, publish rate
+- Error queue (`*_error`) — poison inspect
+- Consumer lag: inbox `processed_on_utc IS NULL` count per schema
+- Circuit breaker open logs — spike correlation
+
+Dejban: centralized dashboard **limited** — SQL + Rabbit UI manual.
+
+---
+
+## Chejori in fasl ra «digested» koni (lab — ~50 min)
+
+1. Docker `eventbus` up — management UI `:15672` (5 min)
+2. Create personnel → trace log «Publish» / queue `personnel-created` depth (10 min)
+3. Compare queue `personnel-created` vs `personnel-created-aclserver` (InstanceId) (10 min)
+4. Kill RequestTracker → `GetResponse` timeout behavior (optional, 10 min)
+5. Read `VisitorsModule.ConfigureConsumers` — count consumer types (5 min)
+6. Draw fan-out diagram roye kaghaz (5 min)
+7. 20 soal + bonus zir (5 min)
+
+---
+
+## 5 soal-e ezafe (bonus)
+
+21. **`DisableUsageTelemetry` chi?** — MassTransit telemetry off (privacy/ops choice)
+22. **Chera `IEventBus` na `IBus` to Application?** — test double + Clean Architecture
+23. **IntegrationEventConsumer exception = ?** — MT retry; inbox row maybe never inserted if always fail
+24. **`ConfigureReceiveEndpoints` empty — chera register?** — extension point baraye manual bind; alan unused
+25. **Redis package versioned vali bus na — risk?** — dead dependency / future option
+
+---
+
 ## Resume
 
 **short:**
@@ -550,4 +749,5 @@ Har do transactional — implementation fargh.
 
 ---
 
-Day 20 tamum. Ba'd: Day 21 — Transactional Outbox deep dive (khali). Fehrest: [README.md](./README.md).
+*Day 20 tamum. Ba'd: Day 21 — Transactional Outbox (custom Dejban) — khali. Fehrest: [README.md](./README.md).*
+

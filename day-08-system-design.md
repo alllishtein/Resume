@@ -716,4 +716,145 @@ Backend `.gitlab-ci.yml` **nist** to repo. Deploy manual ya joda.
 
 ---
 
+---
+
+## Dejban — consistency model (CAP + practice)
+
+| data | consistency | chera |
+|---|---|---|
+| Write to Postgres (har service) | **Strong** (ACID, single primary) | user save → hamon response bayad dorost bashad |
+| JWT + permission check | **Strong enough** (token snapshot) | revoke eventual via Redis TTL |
+| HybridCache read | **Eventual** | stale kam saniye mumken |
+| Read-model copy (Personnel to Visitors) | **Eventual** | outbox → Rabbit → inbox → upsert |
+| Device sync (ACL → gRPC) | **Eventual + retry** | Polly + MT retry |
+| Report ticket (Redis 5 min) | **Strong for ticket window** | one-time access token |
+
+**Partition scenario:** Postgres unreachable → service **503/502**, na «fake OK». Rabbit down → writes succeed, events **lag** (outbox pile). Redis down → auth revoke/check weak + cache miss heavy.
+
+**Interview line:** «We are CP on authoritative data (Postgres), AP on cache and async projections. Users see strong consistency on their own writes; cross-module lists may lag seconds.»
+
+---
+
+## Gateway — design responsibilities (Dejban-specific)
+
+YARP **transparent proxy** — na aggregation, na GraphQL.
+
+| concern | implementation hint | failure if broken |
+|---|---|---|
+| Single TLS entry | HTTPS :7036 | cert expiry = all down |
+| Route table | 60+ routes, 9 clusters | 404 wrong cluster |
+| JWT validation | shared `JwtSettings` | 401 everywhere |
+| Token revoke | middleware + Redis | logout ineffective |
+| Rate limit | auth tight, global loose | brute force / DoS |
+| CORS | dev permissive | prod misconfig blocks FE |
+| File proxy | `/files/*` → DCC | broken uploads/downloads |
+
+**Na darim:** active health-based routing, circuit breaker roye gateway, WAF, API key per partner.
+
+---
+
+## Event flow — reliability mental model
+
+```
+[Command] → SaveChanges (entity + outbox same tx)
+         → HTTP 200 to client  ← user thinks "done"
+         → Quartz ProcessOutboxJob
+         → RabbitMQ
+         → Consumer (MT or Inbox job)
+         → Handler SoftDelete/Upsert copy
+```
+
+**Failure modes:**
+
+| failure | user impact | recovery |
+|---|---|---|
+| Outbox job stopped | other modules stale | restart job; backlog drains |
+| Consumer throws | retry → error queue | fix handler; replay |
+| Duplicate delivery | double upsert | inbox idempotency (Day 23) |
+| Ordering lost | rare race on updates | last-write-wins or version (limited) |
+| Poison message | stuck after retries | DLQ / manual skip |
+
+**Dejban dual outbox:** modular monolith = **Dapper/Quartz custom**; Identity/ACL/RT = **MassTransit EF outbox**. Mosahebe: «Same pattern, two implementations for historical reasons.»
+
+---
+
+## Scaling notes — realistic playbook
+
+**Alan (typical dev/single prod):** 1 instance per app, 7 Postgres containers, 1 Redis, 1 Rabbit.
+
+**10x traffic — ordered steps:**
+
+1. **Stateless HTTP** — duplicate Dejban.Api + Gateway behind LB (JWT helps).
+2. **Connection pool** — tune Npgsql `Max Pool Size`; watch Postgres `max_connections`.
+3. **Read replica** — Reporting + heavy list queries off replica (na darim — add).
+4. **Redis** — cluster/sentinel for blacklist + HybridCache.
+5. **Inbox/outbox** — `FOR UPDATE SKIP LOCKED` (na plain FOR UPDATE).
+6. **SignalR** — Redis backplane for multi-instance.
+7. **Quartz** — persistent store + single leader or partitioned jobs.
+8. **CDN** — static Next assets off origin.
+
+**Bottleneck priority:** DB connections > inbox lock > single Redis > Gateway single point.
+
+---
+
+## Failure modes matrix (whiteboard)
+
+| component | SPOF? | symptom | mitigation |
+|---|---|---|---|
+| ApiGateway | yes | total API down | 2+ instance + LB |
+| Redis | yes | no revoke cache; cache stampede | Redis HA |
+| RabbitMQ | yes | async stall | cluster; monitor queue depth |
+| Each Postgres | yes | service hard down | managed HA, backup |
+| MinIO | yes | files fail | replicate buckets |
+| gRPC device server | per site | device offline | retry; local queue on device |
+| Seq/Jaeger off | observability | blind in prod | enable in prod |
+
+**Cascade example:** Site soft-delete → N × PersonnelSoftDeleted → queue spike → consumer lag → Vehicles copy still «active» 30s. **Not wrong** — eventual.
+
+---
+
+## Interview whiteboard — «Design Dejban in 15 minutes»
+
+**1. Requirements (2 min)**  
+Enterprise multi-site access control. Browsers + devices. Audit, soft-delete, workflow approve. Latency: interactive < 300ms API. Availability: business hours 99.9% target.
+
+**2. Boxes (3 min)**  
+Draw: Browser → YARP → {Identity, Dejban modular, ACL, DCC, RT, Reporting, Gate}. Postgres per service. Redis, Rabbit, MinIO on side. gRPC box for devices.
+
+**3. Data (3 min)**  
+Dejban: 1 DB, schemas = module boundaries. No cross-DB FK. Personnel master in Personnels; Visitors/Vehicles **copy** via events.
+
+**4. Auth (2 min)**  
+JWT 15m + refresh cookie. Gateway validates. X-Site-Id + claims → tenant filter (Day 16).
+
+**5. Async (3 min)**  
+Outbox same transaction. Why? «Don't lose events if crash after DB commit.» Rabbit for fan-out. Idempotent inbox.
+
+**6. Tradeoffs (2 min)**  
+Modular monolith vs 8 microservices for business modules → chose monolith for speed, schema isolation for future split. Eventual read models vs synchronous coupling.
+
+**Trap questions:**  
+- «Why not one DB for everything?» → blast radius, team ownership, migration independence.  
+- «Why not sync HTTP Personnel → Visitors?» → coupling, cascade failure, versioning hell.  
+- «Strong consistency everywhere?» → slow, unavailable under partition; accept eventual for copies.
+
+---
+
+## Event-driven vs sync — decision tree (Dejban)
+
+```
+Need result in same HTTP response?
+  YES → MediatR handler + Postgres (sync)
+  NO  → domain event → outbox → async
+
+Need data from another service now?
+  BAD default in Dejban → use local copy + event sync
+  OK exception → Identity token issue at login (sync to Gateway)
+
+Device action?
+  → ACL HTTP/gRPC sync with retry (user waiting at door)
+```
+
+---
+
 Day 08 tamum. Ba'd: Day 09 — Microservices vs Modular Monolith + DDD layering. Fehrest: [README.md](./README.md).
