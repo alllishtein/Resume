@@ -1,4 +1,4 @@
-# Day 02 — HTTP / REST / Web
+# Day 01 — HTTP / REST / Web
 
 *Ketabche-ye Dejban stack — style: sade, kamel, berooz*
 
@@ -617,4 +617,4 @@ HTTP DELETE mitone body dashte bashe, vali proxy-haye ghadimi gahi body ra minda
 
 ---
 
-*Day 02 tamum.*
+Day 01 tamum. Ba'd: Day 02 — C# async / concurrency / GC. Fehrest: [README.md](./README.md).

@@ -1,4 +1,4 @@
-# Day 09 — JWT Bearer + Token Blacklist
+# Day 06 — JWT Bearer + Token Blacklist
 
 *Ketabche-ye Dejban stack — style: sade, kamel, berooz*
 
@@ -998,4 +998,4 @@ USER                    FRONTEND                 GATEWAY              IDENTITY S
 
 ---
 
-*Day 09 tamum. Ba'd: Day 10 — Microservices vs Modular Monolith + DDD layering. Fehrest: [README.md](./README.md).*
+Day 06 tamum. Ba'd: Day 07 — YARP Reverse Proxy. Fehrest: [README.md](./README.md).

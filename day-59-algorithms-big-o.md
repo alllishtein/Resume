@@ -1,4 +1,4 @@
-# Day 07 — Algorithms + Big-O
+# Day 59 — Algorithms + Big-O
 
 *Ketabche-ye Dejban stack — style: sade, kamel, berooz*
 
@@ -1056,4 +1056,4 @@ Client string "visitorid" → O(1) dictionary lookup → Expression. Na if/else 
 
 ---
 
-*Day 07 tamum. Ba'd: Day 08 — ASP.NET Core pipeline / DI. Fehrest: [README.md](./README.md).*
+Day 59 tamum. In akharin fasl-e mosahebe-st. Fehrest: [README.md](./README.md).

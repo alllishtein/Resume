@@ -1,4 +1,4 @@
-# Day 03 — SQL + Relational DB (PostgreSQL)
+# Day 04 — SQL + Relational DB (PostgreSQL)
 
 *Ketabche-ye Dejban stack — style: sade, kamel, berooz*
 
@@ -585,4 +585,4 @@ ORDER BY occurred_on_utc LIMIT 20 FOR UPDATE SKIP LOCKED;
 
 ---
 
-*Day 03 tamum.*
+Day 04 tamum. Ba'd: Day 05 — ASP.NET Core pipeline / DI. Fehrest: [README.md](./README.md).

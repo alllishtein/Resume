@@ -1,0 +1,571 @@
+# Day 19 — Dapper (outbox / inbox)
+
+*Ketabche-ye Dejban stack — style: sade, kamel, berooz*
+
+---
+
+## Ye khat kholase
+
+Dapper = micro-ORM: SQL minevisi, result map mishe be object. EF Core change-tracker / LINQ dare; Dapper **control + speed** baraye raw SQL. Tu Dejban, Dapper qalb-e **outbox/inbox workers** hast: poll ba `FOR UPDATE`, update `processed_on_utc`, idempotent consumer check. Write-e outbox hanooz **EF interceptor**-e. Hybrid: EF baraye domain, Dapper baraye messaging plumbing.
+
+---
+
+# BAKHSH-E AVAL: WORLD — Dapper + Outbox/Inbox to donya
+
+## Dapper chie?
+
+```csharp
+await using var conn = await dataSource.OpenConnectionAsync();
+
+var users = await conn.QueryAsync<User>(
+    "SELECT id, full_name AS FullName FROM users WHERE is_active = @active",
+    new { active = true });
+
+await conn.ExecuteAsync(
+    "UPDATE users SET last_login = @now WHERE id = @id",
+    new { id, now = DateTime.UtcNow });
+```
+
+| | EF Core | Dapper |
+|---|---|---|
+| SQL | LINQ → generated | **to minevisi** |
+| Tracking | bale | na |
+| Migrations | bale | na |
+| Performance | good | usually faster (less overhead) |
+| Multi-mapping | Include | splitOn / multi-map |
+| Best for | domain write, complex graph | reports, jobs, hot SQL, locks |
+
+**Micro-ORM** = map rows ↔ objects, bedune full unit-of-work stack.
+
+---
+
+## Core APIs
+
+| API | chi |
+|---|---|
+| `QueryAsync<T>` / `Query<T>` | SELECT → `IEnumerable<T>` |
+| `QueryFirstOrDefaultAsync` | 0–1 row |
+| `QuerySingleAsync` | exactly 1 |
+| `ExecuteAsync` | INSERT/UPDATE/DELETE → rows affected |
+| `ExecuteScalarAsync<T>` | single value (`EXISTS`, `COUNT`) |
+| `QueryMultiple` | multi-result sets (one round-trip) |
+| `QueryAsync<(A,B)>` / multi-map | join → multiple types |
+
+```csharp
+bool exists = await conn.ExecuteScalarAsync<bool>(
+    "SELECT EXISTS(SELECT 1 FROM outbox_consumers WHERE id = @Id)",
+    new { Id = messageId });
+```
+
+---
+
+## Parameterization (SQL injection)
+
+```csharp
+// ✅ parameterized
+await conn.QueryAsync("SELECT * FROM t WHERE id = @Id", new { Id = id });
+
+// ❌ string concat
+await conn.QueryAsync($"SELECT * FROM t WHERE id = '{id}'");
+```
+
+Dapper anonymous object / DTO → named params. Postgres: `@Id` style via Npgsql.
+
+---
+
+## Mapping tricks
+
+```csharp
+// snake_case columns → PascalCase props
+DefaultTypeMap.MatchNamesWithUnderscores = true;
+
+// alias in SQL
+"SELECT full_name AS FullName FROM ..."
+
+// custom type handler (uuid[], arrays)
+SqlMapper.AddTypeHandler(new GuidListHandler());
+```
+
+---
+
+## Transaction + row locking
+
+```csharp
+await using var tx = await conn.BeginTransactionAsync();
+
+var rows = await conn.QueryAsync<Msg>(
+    """
+    SELECT id, content FROM outbox_messages
+    WHERE processed_on_utc IS NULL
+    ORDER BY occurred_on_utc
+    LIMIT 50
+    FOR UPDATE
+    """,
+    transaction: tx);
+
+// process...
+await conn.ExecuteAsync("UPDATE ... SET processed_on_utc = @now WHERE id = @Id",
+    param, transaction: tx);
+
+await tx.CommitAsync();
+```
+
+| lock | behavior |
+|---|---|
+| `FOR UPDATE` | lock rows; other tx **wait** |
+| `FOR UPDATE SKIP LOCKED` | skip locked → parallel workers ✅ scale |
+| `FOR UPDATE NOWAIT` | fail immediately if locked |
+
+**World best practice for multi-instance workers:** `SKIP LOCKED`.
+
+---
+
+## Transactional Outbox (pattern)
+
+```
+Same DB transaction:
+  1. Save business entity
+  2. Insert outbox row (event payload)
+
+Later worker:
+  3. Poll unprocessed outbox
+  4. Publish / handle
+  5. Mark processed
+```
+
+**Chera?** Age publish ghabl az commit bashe va crash kone → event lost ya phantom. Outbox = at-least-once + durable.
+
+## Inbox (pattern)
+
+```
+Bus delivers message
+  → INSERT inbox (idempotent ON CONFLICT)
+  → Worker processes inbox
+  → Mark processed + record consumer (idempotent per handler)
+```
+
+**Chera?** At-least-once delivery → duplicate. Inbox + consumer table = process-once per handler.
+
+---
+
+## Idempotency
+
+```
+Handler name + message id → consumer table
+EXISTS? → skip
+ELSE → handle → INSERT consumer
+```
+
+Decorator pattern (Scrutor) around real handler.
+
+---
+
+## Dapper vs alternatives
+
+| tool | note |
+|---|---|
+| Dapper | king of micro-ORM in .NET |
+| Dapper.Contrib | CRUD attributes |
+| SqlKata | query builder → SQL |
+| EF `FromSql` / `SqlQuery` | raw SQL inside EF |
+| ADO.NET | zero abstraction |
+
+---
+
+## Chizaei ke to donya hastan vali inja kam/nistan
+
+- **`SKIP LOCKED`** — Dejban faghat `FOR UPDATE` (+ Quartz single execution)
+- **Dapper.Contrib / QueryMultiple** — nist
+- **Stored procedures** via Dapper — nist
+- **Retry failed outbox** (`processed_on_utc` set even on error) — failed = stuck unless manual
+- **Outbox write via Dapper** — Dejban write = EF interceptor
+- **MassTransit EF Outbox** (standalone services) — pattern digar (Day 39)
+
+---
+
+# BAKHSH-E DOVOM: DEJBAN — Dapper to outbox/inbox
+
+## Version & setup
+
+```xml
+<!-- Directory.Packages.props -->
+Dapper 2.1.66
+```
+
+```csharp
+// ApplicationConfiguration.cs
+Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
+
+// InfrastructureConfiguration.cs
+NpgsqlDataSource npgsqlDataSource = new NpgsqlDataSourceBuilder(cs).Build();
+services.TryAddSingleton(npgsqlDataSource);
+services.TryAddScoped<IDbConnectionFactory, DbConnectionFactory>();
+
+SqlMapper.AddTypeHandler(new GenericArrayHandler<string>());
+SqlMapper.AddTypeHandler(new GuidListHandler()); // List<Guid> ↔ uuid[]
+```
+
+```csharp
+// IDbConnectionFactory + DbConnectionFactory
+public interface IDbConnectionFactory
+{
+    ValueTask<DbConnection> OpenConnectionAsync();
+}
+
+internal sealed class DbConnectionFactory(NpgsqlDataSource dataSource) : IDbConnectionFactory
+{
+    public async ValueTask<DbConnection> OpenConnectionAsync()
+        => await dataSource.OpenConnectionAsync();
+}
+```
+
+---
+
+## Hybrid architecture
+
+```
+Command handler
+  → entity.Raise(domainEvent)
+  → EF SaveChanges
+      → InsertOutboxMessagesInterceptor  ← EF write to outbox_messages
+  → Quartz ProcessOutboxJob             ← Dapper poll + FOR UPDATE
+      → DomainEventHandler (may publish integration event)
+          → IdempotentDomainEventHandler ← Dapper EXISTS/INSERT consumers
+
+MassTransit consumer
+  → IntegrationEventConsumer            ← Dapper INSERT inbox ON CONFLICT DO NOTHING
+  → Quartz ProcessInboxJob              ← Dapper poll + FOR UPDATE
+      → IntegrationEventHandler
+          → IdempotentIntegrationEventHandler ← Dapper consumers
+```
+
+**8 modules** hamin pattern: Visitors, Personnels, Vehicles, Armory, Inventory, CashLogistics, WeighBridge, SecurityPatrols — faghat schema name fargh mikone (`visitors.*`, `personnels.*`, …).
+
+---
+
+## Table shape
+
+| table | role |
+|---|---|
+| `{schema}.outbox_messages` | domain events waiting to process |
+| `{schema}.outbox_message_consumers` | (message_id, handler_name) idempotency |
+| `{schema}.inbox_messages` | integration events waiting |
+| `{schema}.inbox_message_consumers` | same for inbox handlers |
+
+Columns (messages):
+
+```
+id uuid PK
+type text
+content jsonb
+site_ids uuid[]
+is_super_admin boolean
+occurred_on_utc timestamptz
+processed_on_utc timestamptz NULL
+error text NULL
+```
+
+Config example: BatchSize **50**, Interval **5 seconds** (`modules.visitors.json` Outbox/Inbox options).
+
+---
+
+## ProcessOutboxJob (Visitors)
+
+```csharp
+// File: Visitors.Infrastructure/Outbox/ProcessOutboxJob.cs
+
+[DisallowConcurrentExecution]
+internal sealed class ProcessOutboxJob(...) : IJob
+{
+    public async Task Execute(IJobExecutionContext context)
+    {
+        await using DbConnection connection = await dbConnectionFactory.OpenConnectionAsync();
+        await using DbTransaction transaction = await connection.BeginTransactionAsync();
+
+        var messages = await GetOutboxMessagesAsync(connection, transaction);
+
+        foreach (var outboxMessage in messages)
+        {
+            Exception? exception = null;
+            try
+            {
+                var domainEvent = JsonConvert.DeserializeObject<IDomainEvent>(
+                    outboxMessage.Content, SerializerSettings.Instance)!;
+
+                using var scope = serviceScopeFactory.CreateScope();
+                TenantContextAccessor.SetContext(
+                    [.. outboxMessage.SiteIds], outboxMessage.IsSuperAdmin);
+
+                var handlers = DomainEventHandlersFactory.GetHandlers(
+                    domainEvent.GetType(), scope.ServiceProvider,
+                    Application.AssemblyReference.Assembly);
+
+                foreach (var handler in handlers)
+                    await handler.Handle(domainEvent, context.CancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "... {MessageId}", outboxMessage.Id);
+                exception = ex;
+            }
+
+            await UpdateOutboxMessageAsync(connection, transaction, outboxMessage, exception);
+        }
+
+        await transaction.CommitAsync();
+    }
+
+    private async Task<IReadOnlyList<OutboxMessageResponse>> GetOutboxMessagesAsync(...)
+    {
+        string sql =
+            $"""
+             SELECT id AS Id, content AS Content,
+                    site_ids AS SiteIds, is_super_admin AS IsSuperAdmin
+             FROM visitors.outbox_messages
+             WHERE processed_on_utc IS NULL
+             ORDER BY occurred_on_utc
+             LIMIT {outboxOptions.Value.BatchSize}
+             FOR UPDATE
+             """;
+
+        return (await connection.QueryAsync<OutboxMessageResponse>(sql, transaction: transaction))
+            .ToList();
+    }
+
+    private async Task UpdateOutboxMessageAsync(..., Exception? exception)
+    {
+        const string sql =
+            """
+            UPDATE visitors.outbox_messages
+            SET processed_on_utc = @ProcessedOnUtc, error = @Error
+            WHERE id = @Id
+            """;
+
+        await connection.ExecuteAsync(sql, new
+        {
+            outboxMessage.Id,
+            ProcessedOnUtc = dateTimeProvider.UtcNow,
+            Error = exception?.ToString()
+        }, transaction);
+    }
+}
+```
+
+### Points
+
+1. **Dapper `QueryAsync` + `ExecuteAsync`** — na EF
+2. **`FOR UPDATE`** — lock rows for this transaction
+3. **`[DisallowConcurrentExecution]`** — yek instance job to yek scheduler
+4. **Tenant restored** from message `site_ids` / `is_super_admin`
+5. **Error path:** `processed_on_utc` **set** + `error` filled → **auto-retry nist**
+
+---
+
+## ProcessInboxJob
+
+Hamoon structure; table = `visitors.inbox_messages`; deserialize `IIntegrationEvent`; handlers from **Presentation** assembly.
+
+```sql
+FROM visitors.inbox_messages
+WHERE processed_on_utc IS NULL
+ORDER BY occurred_on_utc
+LIMIT {BatchSize}
+FOR UPDATE
+```
+
+---
+
+## IntegrationEventConsumer — Dapper insert
+
+```csharp
+// File: Visitors.Infrastructure/Inbox/IntegrationEventConsumer.cs
+
+const string sql =
+    """
+    INSERT INTO visitors.inbox_messages(id, type, content, site_ids, is_super_admin, occurred_on_utc)
+    VALUES (@Id, @Type, @Content::json, @SiteIds, @IsSuperAdmin, @OccurredOnUtc)
+    ON CONFLICT (id) DO NOTHING
+    """;
+
+await connection.ExecuteAsync(sql, inboxMessage);
+```
+
+- MassTransit deliver → **persist only**
+- Process async by Quartz
+- `ON CONFLICT DO NOTHING` → duplicate bus delivery safe
+- `@Content::json` / jsonb + `GuidListHandler` for `site_ids`
+
+---
+
+## Idempotent handlers (Dapper EXISTS)
+
+```csharp
+// IdempotentDomainEventHandler
+
+if (await OutboxConsumerExistsAsync(connection, consumer))
+    return;  // already handled by this handler type
+
+await decorated.Handle(domainEvent, ct);
+await InsertOutboxConsumerAsync(connection, consumer);
+
+// SQL:
+SELECT EXISTS(
+  SELECT 1 FROM visitors.outbox_message_consumers
+  WHERE outbox_message_id = @OutboxMessageId AND name = @Name);
+
+INSERT INTO visitors.outbox_message_consumers(outbox_message_id, name)
+VALUES (@OutboxMessageId, @Name);
+```
+
+Inbox twin: `inbox_message_consumers` + `IdempotentIntegrationEventHandler`.
+
+Wired ba Scrutor `Decorate` (Day 41).
+
+---
+
+## Chera Dapper inja (na EF)?
+
+| need | Dapper fit |
+|---|---|
+| `FOR UPDATE` in explicit tx | natural ADO/Dapper |
+| No change tracker overhead | poll every 5s |
+| Schema-qualified SQL | clear `visitors.outbox_messages` |
+| Map to tiny records | `OutboxMessageResponse` |
+| `EXISTS` scalar | `ExecuteScalarAsync<bool>` |
+
+EF still owns:
+- Domain SaveChanges
+- Outbox **insert** (interceptor)
+- Card number / ACL user id sequences (Serializable EF tx)
+
+---
+
+## Other Dapper usage
+
+**PatrolReportService** (SecurityPatrols): cross-schema blacklist queries
+
+```sql
+-- visitors.black_list_history / personnels.black_list_history
+connection.QueryAsync<VisitorBlackListDto>(...)
+```
+
+Rare escape hatch when module DbContext shouldn't join foreign schema.
+
+---
+
+## Error / retry reality
+
+| case | behavior |
+|---|---|
+| Handler throws | log + `error` column + **mark processed** |
+| Next poll | row **skipped** (`processed_on_utc IS NOT NULL`) |
+| Manual fix | clear `processed_on_utc` / re-insert / admin tool |
+| Bus duplicate | inbox `ON CONFLICT DO NOTHING` |
+| Handler re-run same message | consumer EXISTS → skip |
+
+**Smell:** poison message silent after one failure. World often: retry count, dead-letter, exponential backoff.
+
+---
+
+## Concurrency smell (scale)
+
+```
+Instance A: FOR UPDATE rows 1..50
+Instance B: waits on same rows  (na SKIP LOCKED)
++ Quartz DisallowConcurrentExecution → usually 1 runner per process
+```
+
+Multi-node Dejban.Api bedune `SKIP LOCKED` → serialize / block. Day 06/07 ham goftim.
+
+**Fix World:**  
+
+```sql
+FOR UPDATE SKIP LOCKED
+```
+
+---
+
+## Contrast: MassTransit EF Outbox (standalone)
+
+Identity / ACL / RequestTracker: MassTransit `AddEntityFrameworkOutbox` — tables `OutboxMessage` / `InboxState` managed by MassTransit. **Dapper jobs nist.** Dejban modules = custom Dapper workers.
+
+---
+
+## Smell-ha
+
+1. **No SKIP LOCKED** — multi-instance blocking
+2. **Failed = processed** — no automatic retry
+3. **Hardcoded schema in SQL strings** — 8 copy-paste jobs (`visitors.` vs `personnels.`)
+4. **Json.NET deserialize** — polymorphism settings critical
+5. **Long transaction** — lock held while handlers run (HTTP/DB inside handlers!)
+6. **Dual connection stacks** — EF pool + NpgsqlDataSource
+7. **No QueryMultiple / Contrib** — fine, but limited toolkit
+8. **error column unbounded text** — exception.ToString() can be huge
+9. **BatchSize in SQL string interpolation** — ok as int from options, not user input; still style smell vs parameter
+10. **Inbox consumer insert after handle** — crash between handle & insert → re-run (idempotent handler must be truly safe)
+
+---
+
+## 20 soal-e mosahebe
+
+1. **Dapper chie?** — Micro-ORM; you write SQL; maps results
+2. **EF vs Dapper?** — EF tracking/LINQ/migrations; Dapper raw/fast/control
+3. **Outbox pattern?** — Persist event with business data same tx; publish later
+4. **Inbox pattern?** — Persist incoming message; process async; idempotent
+5. **FOR UPDATE?** — Lock selected rows until tx ends
+6. **SKIP LOCKED?** — Parallel workers skip locked rows
+7. **Chera Dejban Dapper for jobs?** — Locks + lightweight poll
+8. **Outbox write kejast?** — EF SaveChanges interceptor
+9. **ON CONFLICT DO NOTHING?** — Idempotent inbox insert
+10. **Idempotent consumer table?** — (messageId, handlerName) processed once
+11. **MatchNamesWithUnderscores?** — snake_case → PascalCase
+12. **TypeHandler?** — Custom map (uuid[] ↔ List&lt;Guid&gt;)
+13. **DisallowConcurrentExecution?** — One Quartz job run at a time
+14. **Failed message retry?** — Dejban marks processed — usually no auto-retry
+15. **At-least-once vs exactly-once?** — Bus at-least-once; exactly-once via inbox+consumers
+16. **SQL injection?** — Always parameterized `@Id`
+17. **QueryAsync vs ExecuteAsync?** — Query returns rows; Execute mutates
+18. **ExecuteScalarAsync?** — Single value (EXISTS, COUNT)
+19. **Long lock smell?** — Don't call slow external I/O while holding FOR UPDATE
+20. **Hybrid persistence?** — EF domain + Dapper infrastructure messaging
+
+---
+
+## Resume
+
+**short:**
+
+> Implemented transactional outbox/inbox processing with Dapper 2.1 on PostgreSQL: schema-qualified SQL, `FOR UPDATE` batch polling, Quartz workers, and idempotent consumer tables — while EF Core remains responsible for domain persistence and outbox inserts via SaveChanges interceptor.
+
+**bullets:**
+
+- Built `ProcessOutboxJob` / `ProcessInboxJob` using Dapper `QueryAsync`/`ExecuteAsync` with transactional `FOR UPDATE` batching (size 50, interval 5s)
+- Inserted inbox rows from MassTransit consumers via Dapper `INSERT ... ON CONFLICT DO NOTHING`
+- Enforced handler idempotency with Dapper `EXISTS` + consumer table inserts, wrapped by Scrutor decorators
+- Configured `NpgsqlDataSource`, underscore name matching, and `uuid[]` type handlers for `site_ids`
+
+**skills:** `Dapper, Micro-ORM, Transactional Outbox, Inbox Pattern, PostgreSQL FOR UPDATE, Idempotency, Quartz, Raw SQL, Npgsql`
+
+---
+
+## File-haye mohem
+
+| chi | koja |
+|---|---|
+| Dapper version | `Directory.Packages.props` |
+| Underscore mapping | `Dejban.Common.Application/ApplicationConfiguration.cs` |
+| IDbConnectionFactory | `Dejban.Common.Application/Data/IDbConnectionFactory.cs` |
+| DbConnectionFactory | `Dejban.Common.Infrastructure/Data/DbConnectionFactory.cs` |
+| GuidListHandler | `Dejban.Common.Infrastructure/Data/GuidListHandler.cs` |
+| ProcessOutboxJob | `Visitors.Infrastructure/Outbox/ProcessOutboxJob.cs` |
+| ProcessInboxJob | `Visitors.Infrastructure/Inbox/ProcessInboxJob.cs` |
+| IntegrationEventConsumer | `Visitors.Infrastructure/Inbox/IntegrationEventConsumer.cs` |
+| Idempotent domain | `Visitors.Infrastructure/Outbox/IdempotentDomainEventHandler.cs` |
+| Idempotent integration | `Visitors.Infrastructure/Inbox/IdempotentIntegrationEventHandler.cs` |
+| Outbox EF write | `Dejban.Common.Infrastructure/Outbox/InsertOutboxMessagesInterceptor.cs` |
+| OutboxMessage config | `Visitors.Infrastructure/Outbox/OutboxMessageConfiguration.cs` |
+| Other Dapper | `SecurityPatrols.../PatrolReportService.cs` |
+
+---
+
+Day 19 tamum. Ba'd: Day 20 — MassTransit + RabbitMQ. Fehrest: [README.md](./README.md).

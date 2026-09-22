@@ -831,4 +831,4 @@ public static Error InvalidFormat(string fieldName) =>
 
 ---
 
-*Day 12 tamum. Ba'd: Day 13 — EF Core 10 + Npgsql (multi-schema, migrations). Fehrest: [README.md](./README.md).*
+Day 12 tamum. Ba'd: Day 13 — EF Core 10 + Npgsql. Fehrest: [README.md](./README.md).

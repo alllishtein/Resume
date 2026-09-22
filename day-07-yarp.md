@@ -1,4 +1,4 @@
-# Day 01 — YARP Reverse Proxy
+# Day 07 — YARP Reverse Proxy
 
 *Ketabche-ye Dejban stack — style: sade, kamel, berooz*
 
@@ -1069,4 +1069,4 @@ Bedune search to IDE, mituni in-ha ra neshun bedi?
 
 ---
 
-*Day 01 tamum. Ba'd: Day 02 — HTTP / REST / Web. Fehrest: [README.md](./README.md).*
+Day 07 tamum. Ba'd: Day 08 — System Design. Fehrest: [README.md](./README.md).

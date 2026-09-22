@@ -1,4 +1,4 @@
-# Day 06 — System Design
+# Day 08 — System Design
 
 *Ketabche-ye Dejban stack — style: sade, kamel, berooz*
 
@@ -716,4 +716,4 @@ Backend `.gitlab-ci.yml` **nist** to repo. Deploy manual ya joda.
 
 ---
 
-*Day 06 tamum. Ba'd: Day 07 — Algorithms + Big-O. Fehrest: [README.md](./README.md).*
+Day 08 tamum. Ba'd: Day 09 — Microservices vs Modular Monolith + DDD layering. Fehrest: [README.md](./README.md).

@@ -1,4 +1,4 @@
-# Day 11 — CQRS + MediatR + Pipeline Behaviors
+# Day 10 — CQRS + MediatR + Pipeline Behaviors
 
 *Ketabche-ye Dejban stack — style: sade, kamel, berooz*
 
@@ -989,4 +989,4 @@ public class GetGateLabelsHandler : IQueryHandler<GetGateLabelsQuery, List<GateL
 
 ---
 
-*Day 11 tamum. Ba'd: Day 12 — DDD (aggregate, domain event, value object). Fehrest: [README.md](./README.md).*
+Day 10 tamum. Ba'd: Day 11 — FluentValidation + ErrorOr. Fehrest: [README.md](./README.md).

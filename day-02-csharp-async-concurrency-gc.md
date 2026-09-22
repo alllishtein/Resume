@@ -1,4 +1,4 @@
-# Day 04 — C# / .NET runtime: async, concurrency, GC
+# Day 02 — C# / .NET runtime: async, concurrency, GC
 
 *Ketabche-ye Dejban stack — style: sade, kamel, berooz — Sep 2026, .NET 10 LTS*
 
@@ -476,4 +476,4 @@ Kootah critical section-ha. World-OK. `System.Threading.Lock` jadid-tar vali `ob
 
 ---
 
-*Day 04 tamum.*
+Day 02 tamum. Ba'd: Day 03 — OOP + SOLID + patterns. Fehrest: [README.md](./README.md).

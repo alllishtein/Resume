@@ -1,71 +1,74 @@
 # Dejban stack — ketabche-ye ruzane
 
-in folder kharej az backend/frontend git-e. har ruz ye fasl. file `.md` ra mituni PDF koni.
+in folder joda az git-e backend/frontend. har fasl ye `.md`.
 
-**59 ruz:** 01 YARP + 02..07 bonyadi-e mosahebe + baghie tech/flow-e hamin stack.
+**Chejori:** az Day 00 shoru' kon, be tartib boro pa'in. har ruz ke `—` (khali) bud, bego minevisam.
 
-## Fehrest
+## Fehrest (tartib-e jadid)
 
 | Ruz | File | mozoo |
 |---|---|---|
-| 01 | [day-01-yarp.md](./day-01-yarp.md) | YARP Reverse Proxy |
-| 02 | [day-02-http-rest-web.md](./day-02-http-rest-web.md) | HTTP / REST / Web |
-| 03 | [day-03-sql-relational-db.md](./day-03-sql-relational-db.md) | SQL + relational DB |
-| 04 | [day-04-csharp-async-concurrency-gc.md](./day-04-csharp-async-concurrency-gc.md) | C# async / concurrency / GC |
-| 05 | [day-05-oop-solid-patterns.md](./day-05-oop-solid-patterns.md) | OOP + SOLID + patterns |
-| 06 | [day-06-system-design.md](./day-06-system-design.md) | System design |
-| 07 | [day-07-algorithms-big-o.md](./day-07-algorithms-big-o.md) | Algorithms + Big-O |
-| 08 | [day-08-aspnet-pipeline-di.md](./day-08-aspnet-pipeline-di.md) | ASP.NET Core pipeline / DI |
-| 09 | [day-09-jwt-token-blacklist.md](./day-09-jwt-token-blacklist.md) | JWT Bearer + token blacklist |
-| 10 | [day-10-microservices-modular-monolith-ddd.md](./day-10-microservices-modular-monolith-ddd.md) | Microservices vs Modular Monolith + DDD layering |
-| 11 | [day-11-cqrs-mediatr-pipeline-behaviors.md](./day-11-cqrs-mediatr-pipeline-behaviors.md) | CQRS + MediatR + Pipeline Behaviors |
+| 00 | [day-00-project-map.md](./day-00-project-map.md) | Naghshe-ye proje + lifecycle + glossary |
+| 01 | [day-01-http-rest-web.md](./day-01-http-rest-web.md) | HTTP / REST / Web |
+| 02 | [day-02-csharp-async-concurrency-gc.md](./day-02-csharp-async-concurrency-gc.md) | C# async / concurrency / GC |
+| 03 | [day-03-oop-solid-patterns.md](./day-03-oop-solid-patterns.md) | OOP + SOLID + patterns |
+| 04 | [day-04-sql-relational-db.md](./day-04-sql-relational-db.md) | SQL + relational DB |
+| 05 | [day-05-aspnet-pipeline-di.md](./day-05-aspnet-pipeline-di.md) | ASP.NET Core pipeline / DI |
+| 06 | [day-06-jwt-token-blacklist.md](./day-06-jwt-token-blacklist.md) | JWT Bearer + token blacklist |
+| 07 | [day-07-yarp.md](./day-07-yarp.md) | YARP Reverse Proxy |
+| 08 | [day-08-system-design.md](./day-08-system-design.md) | System design |
+| 09 | [day-09-microservices-modular-monolith-ddd.md](./day-09-microservices-modular-monolith-ddd.md) | Microservices vs Modular Monolith + DDD layering |
+| 10 | [day-10-cqrs-mediatr-pipeline-behaviors.md](./day-10-cqrs-mediatr-pipeline-behaviors.md) | CQRS + MediatR + Pipeline Behaviors |
+| 11 | [day-11-fluentvalidation-erroror.md](./day-11-fluentvalidation-erroror.md) | FluentValidation + ErrorOr |
 | 12 | [day-12-ddd-aggregate-domain-event-value-object.md](./day-12-ddd-aggregate-domain-event-value-object.md) | DDD (aggregate, domain event, value object) |
-| 13 | — | EF Core 10 + Npgsql (multi-schema, migrations) |
-| 14 | — | Dapper (outbox/inbox) |
-| 15 | — | FluentValidation + ErrorOr |
-| 16 | — | MassTransit + RabbitMQ |
-| 17 | — | HybridCache + Redis |
-| 18 | — | SignalR (server) |
-| 19 | — | gRPC (ZK / Tiam) |
-| 20 | — | Serilog + Seq + OpenTelemetry |
-| 21 | — | Health Checks + Docker + EF migration workflow |
-| 22 | — | MinIO / S3 |
-| 23 | — | Quartz + Hangfire |
-| 24 | — | Next.js 16 + React 19 |
-| 25 | — | Turborepo + workspaces |
-| 26 | — | TanStack Query + Axios |
-| 27 | — | React Hook Form + Zod |
-| 28 | — | Zustand + immer |
-| 29 | — | MUI 7 + Emotion + RTL |
-| 30 | — | i18next + Jalali |
-| 31 | — | Playwright + Vitest |
-| 32 | — | Modular DI (`AddXxxModule`) |
-| 33 | — | Minimal APIs + `IEndpoint` |
-| 34 | — | Repository + Unit of Work |
-| 35 | — | Soft Delete |
-| 36 | — | Options pattern |
-| 37 | — | Factory + Strategy (device sync) |
-| 38 | — | Transactional Outbox (custom Dejban) |
-| 39 | — | MassTransit EF Outbox |
-| 40 | — | Inbox + Idempotent Handler |
-| 41 | — | Decorator (Scrutor) |
-| 42 | — | ASP.NET Identity |
-| 43 | — | Permission claims |
-| 44 | — | Multi-tenancy (`X-Site-Id`) |
-| 45 | — | Polly |
-| 46 | — | OpenAPI + Scalar |
-| 47 | — | Excel import |
-| 48 | — | Stimulsoft + ImageSharp |
-| 49 | — | xUnit + NetArchTest |
-| 50 | — | Testcontainers + Bogus |
-| 51 | — | Vite + React Router SPA |
+| 13 | [day-13-ef-core-npgsql.md](./day-13-ef-core-npgsql.md) | EF Core 10 + Npgsql (multi-schema, migrations) |
+| 14 | [day-14-repository-unit-of-work.md](./day-14-repository-unit-of-work.md) | Repository + Unit of Work |
+| 15 | — | Soft Delete |
+| 16 | — | Multi-tenancy (`X-Site-Id`) |
+| 17 | — | Minimal APIs + `IEndpoint` |
+| 18 | — | Modular DI (`AddXxxModule`) |
+| 19 | [day-19-dapper-outbox-inbox.md](./day-19-dapper-outbox-inbox.md) | Dapper (outbox/inbox) |
+| 20 | [day-20-masstransit-rabbitmq.md](./day-20-masstransit-rabbitmq.md) | MassTransit + RabbitMQ |
+| 21 | — | Transactional Outbox (custom Dejban) |
+| 22 | — | MassTransit EF Outbox |
+| 23 | — | Inbox + Idempotent Handler |
+| 24 | — | Decorator (Scrutor) |
+| 25 | — | HybridCache + Redis |
+| 26 | — | SignalR (server) |
+| 27 | — | gRPC (ZK / Tiam / Virdi) |
+| 28 | — | MinIO / S3 |
+| 29 | — | Quartz + Hangfire |
+| 30 | — | Serilog + Seq + OpenTelemetry |
+| 31 | — | Health Checks + Docker + EF migration workflow |
+| 32 | — | Polly |
+| 33 | — | OpenAPI + Scalar |
+| 34 | — | Options pattern |
+| 35 | — | Factory + Strategy (device sync) |
+| 36 | — | ASP.NET Identity |
+| 37 | — | Permission claims |
+| 38 | — | Excel import |
+| 39 | — | Stimulsoft + ImageSharp |
+| 40 | — | Auth end-to-end |
+| 41 | — | Files/Documents (Dejban → DCC) |
+| 42 | — | Next.js 16 + React 19 |
+| 43 | — | Turborepo + workspaces |
+| 44 | — | TanStack Query + Axios |
+| 45 | — | React Hook Form + Zod |
+| 46 | — | Zustand + immer |
+| 47 | — | MUI 7 + Emotion + RTL |
+| 48 | — | i18next + Jalali |
+| 49 | — | Auth UI / Guards / `componentId` |
+| 50 | — | SignalR client |
+| 51 | — | FE patterns (`*.http.js` / feature folders) |
 | 52 | — | material-react-table |
 | 53 | — | SWR |
-| 54 | — | Auth UI / Guards / `componentId` |
-| 55 | — | SignalR client |
-| 56 | — | FE patterns (`*.http.js` / feature folders) |
-| 57 | — | GitLab CI + PM2 |
-| 58 | — | Auth end-to-end |
-| 59 | — | Files/Documents (Dejban → DCC) |
+| 54 | — | Vite + React Router SPA |
+| 55 | — | Playwright + Vitest |
+| 56 | — | xUnit + NetArchTest |
+| 57 | — | Testcontainers + Bogus |
+| 58 | — | GitLab CI + PM2 |
+| 59 | [day-59-algorithms-big-o.md](./day-59-algorithms-big-o.md) | Algorithms + Big-O (mosahebe) |
 
-ruz-e badi ra bego, ketabche-ash sakhte mishe.
+**Amade:** 00–14, 19–20, 59 · **Khali (—):** 15–18, 21–58
+
+Avalin khali: **Day 15 — Soft Delete**

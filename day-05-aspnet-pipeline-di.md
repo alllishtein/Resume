@@ -1,4 +1,4 @@
-# Day 08 — ASP.NET Core Pipeline + Dependency Injection
+# Day 05 — ASP.NET Core Pipeline + Dependency Injection
 
 *Ketabche-ye Dejban stack — style: sade, kamel, berooz*
 
@@ -1081,4 +1081,4 @@ var store = context.RequestServices.GetService<IReportAccessTicketStore>();
 
 ---
 
-*Day 08 tamum. Ba'd: Day 09 — JWT Bearer + token blacklist. Fehrest: [README.md](./README.md).*
+Day 05 tamum. Ba'd: Day 06 — JWT Bearer + token blacklist. Fehrest: [README.md](./README.md).
