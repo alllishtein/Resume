@@ -269,8 +269,8 @@ Har ruz ke `—` bashe = hanuz neveshte nashode; bego ta benevisam.
 
 ## 8) To koja hasti?
 
-Amade: **00–59** (kamel).  
-Avalin khali: **—** (fehrest por).
+Amade: **00–67** (kamel + tech phase).  
+Avalin khali: **—**.
 
 ---
 

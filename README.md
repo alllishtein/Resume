@@ -68,7 +68,15 @@ in folder joda az git-e backend/frontend. har fasl ye `.md`.
 | 57 | [day-57-testcontainers-bogus.md](./day-57-testcontainers-bogus.md) | Testcontainers + Bogus |
 | 58 | [day-58-gitlab-ci-pm2.md](./day-58-gitlab-ci-pm2.md) | GitLab CI + PM2 |
 | 59 | [day-59-algorithms-big-o.md](./day-59-algorithms-big-o.md) | Algorithms + Big-O (mosahebe) |
+| 60 | [day-60-mapster.md](./day-60-mapster.md) | Mapster (object mapping) |
+| 61 | [day-61-postgres-listen-notify.md](./day-61-postgres-listen-notify.md) | Postgres LISTEN/NOTIFY |
+| 62 | [day-62-masstransit-request-response.md](./day-62-masstransit-request-response.md) | MassTransit Request/Response |
+| 63 | [day-63-rate-limiting-output-cache-api-versioning.md](./day-63-rate-limiting-output-cache-api-versioning.md) | Rate limiting + Output cache + API versioning |
+| 64 | [day-64-reporting-read-model-capability-tickets.md](./day-64-reporting-read-model-capability-tickets.md) | Reporting read-model + capability tickets |
+| 65 | [day-65-next-basepath-rewrites.md](./day-65-next-basepath-rewrites.md) | Next.js basePath + rewrites |
+| 66 | [day-66-infinite-query-refresh-single-flight.md](./day-66-infinite-query-refresh-single-flight.md) | useInfiniteQuery + refresh single-flight |
+| 67 | [day-67-maplibre-tiptap-charts-jspdf.md](./day-67-maplibre-tiptap-charts-jspdf.md) | MapLibre + TipTap + Charts + jsPDF |
 
-**Amade:** 00–59 · **Khali (—):** —
+**Amade:** 00–67 · **Khali (—):** —
 
-Curriculum complete (00–59).
+Curriculum + tech phase 60–67 complete.
