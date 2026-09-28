@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>رزومه — علی شفایی</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* همان تمپلیت Canva — نسخه فارسی RTL */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #cfcfcf;
+      font-family: Vazirmatn, Tahoma, Arial, sans-serif;
+      color: #1a1a1a;
+      font-size: 10.5pt;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .toolbar {
+      width: 210mm;
+      max-width: 100%;
+      margin: 14px auto 8px;
+      text-align: left;
+      padding: 0 8px;
+    }
+    .toolbar button {
+      font: 600 12px Vazirmatn, sans-serif;
+      padding: 8px 16px;
+      border: none;
+      background: #111;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto 28px;
+      background: #fff;
+      padding: 16mm 17mm 14mm;
+      box-shadow: 0 2px 18px rgba(0,0,0,.18);
+    }
+
+    .header {
+      display: grid;
+      grid-template-columns: 1.15fr auto 1fr;
+      align-items: center;
+      column-gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .name-block { text-align: right; }
+
+    .name {
+      font-size: 22pt;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: 0;
+      color: #111;
+    }
+    .name .line2 { display: block; }
+
+    .role {
+      margin-top: 8px;
+      font-size: 11pt;
+      font-weight: 400;
+      color: #222;
+    }
+
+    .photo-wrap {
+      width: 98px;
+      height: 98px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: #e6e6e6;
+      flex-shrink: 0;
+    }
+    .photo-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .photo-fallback {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: #999;
+      text-align: center;
+      padding: 8px;
+    }
+
+    .contact {
+      text-align: right;
+      justify-self: start;
+      font-size: 9.5pt;
+      color: #222;
+    }
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 7px;
+      flex-direction: row;
+    }
+    .contact-item:last-child { margin-bottom: 0; }
+    .contact svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+    }
+    .ph { color: #aaa; }
+
+    section { margin-bottom: 16px; }
+
+    .sec-title {
+      font-size: 11pt;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #111;
+      margin-bottom: 5px;
+    }
+
+    .divider {
+      border: 0;
+      border-top: 1px solid #bdbdbd;
+      margin: 0 0 10px;
+    }
+
+    .summary {
+      font-size: 10pt;
+      color: #2a2a2a;
+      line-height: 1.65;
+      text-align: justify;
+    }
+
+    .entry { margin-bottom: 11px; }
+    .entry:last-child { margin-bottom: 0; }
+
+    .entry-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 3px;
+    }
+    .entry-head .job {
+      font-weight: 700;
+      font-size: 10.5pt;
+      color: #111;
+    }
+    .entry-head .dates {
+      font-size: 9.5pt;
+      font-weight: 500;
+      color: #333;
+      white-space: nowrap;
+    }
+
+    .entry ul {
+      margin: 0;
+      padding-right: 18px;
+      padding-left: 0;
+    }
+    .entry li {
+      margin-bottom: 3px;
+      font-size: 10pt;
+      color: #2a2a2a;
+    }
+
+    .skills {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      column-gap: 24px;
+      row-gap: 4px;
+      list-style: none;
+      padding: 0;
+    }
+    .skills li {
+      position: relative;
+      padding-right: 14px;
+      padding-left: 0;
+      font-size: 10pt;
+      color: #2a2a2a;
+      margin-bottom: 4px;
+    }
+    .skills li::before {
+      content: "";
+      position: absolute;
+      right: 0;
+      top: 8px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #111;
+    }
+
+    @media print {
+      body { background: #fff; }
+      .toolbar { display: none !important; }
+      .page {
+        margin: 0;
+        box-shadow: none;
+        width: 100%;
+        min-height: 100vh;
+      }
+      @page { size: A4; margin: 0; }
+    }
+
+    @media (max-width: 800px) {
+      .page { width: 100%; padding: 28px 22px; min-height: auto; }
+      .header { grid-template-columns: 1fr; row-gap: 14px; }
+      .contact { justify-self: start; }
+      .skills { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button type="button" onclick="window.print()">چاپ / PDF</button>
+  </div>
+
+  <article class="page">
+    <header class="header">
+      <div class="name-block">
+        <h1 class="name">
+          علی
+          <span class="line2">شفایی</span>
+        </h1>
+        <p class="role">توسعه‌دهنده فول‌استک .NET / React</p>
+      </div>
+
+      <div class="photo-wrap">
+        <img src="photo.jpg" alt="علی شفایی" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="photo-fallback" style="display:none;">عکس.jpg را اضافه کنید</div>
+      </div>
+
+      <div class="contact">
+        <div class="contact-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.81.36 1.6.68 2.35a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.75.32 1.54.55 2.35.68A2 2 0 0 1 22 16.92z"/></svg>
+          <span>09034803503</span>
+        </div>
+        <div class="contact-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 7 9-7"/></svg>
+          <span>alllishtein@gmail.com</span>
+        </div>
+        <div class="contact-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>
+          <span>alllishtein.ir · LinkedIn/alllishtein98</span>
+        </div>
+        <div class="contact-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M21 10c0 6-9 12-9 12S3 16 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span>اندیشه، تهران</span>
+        </div>
+      </div>
+    </header>
+
+    <section>
+      <h2 class="sec-title">خلاصه حرفه‌ای</h2>
+      <hr class="divider" />
+      <p class="summary">
+        توسعه‌دهنده فول‌استک با تمرکز روی بک‌اند سازمانی با C# / ASP.NET Core و
+        فرانت‌اند با React / Next.js. تجربه ساخت پلتفرم‌های چندسرویسی کنترل دسترسی
+        با CQRS، DDD، MassTransit/RabbitMQ، Transactional Outbox/Inbox،
+        Redis، SignalR و استک مدرن Turborepo (TanStack Query، React Hook Form، MUI).
+      </p>
+    </section>
+
+    <section>
+      <h2 class="sec-title">سوابق شغلی</h2>
+      <hr class="divider" />
+
+      <div class="entry">
+        <div class="entry-head">
+          <div class="job">توسعه‌دهنده فول‌استک، پیامگستر فاوا — پلتفرم دژبان</div>
+          <div class="dates">۱۴۰۲ – اکنون</div>
+        </div>
+        <ul>
+          <li>توسعه فول‌استک پلتفرم سازمانی امنیت و کنترل دسترسی (.NET و React)</li>
+          <li>طراحی و پیاده‌سازی بک‌اند مبتنی بر CQRS / DDD و پیام‌رسانی رویدادمحور</li>
+          <li>پیاده‌سازی احراز هویت، دسترسی مبتنی بر نقش، و قابلیت‌های Realtime</li>
+          <li>ساخت فرانت‌اند مدرن چنداپلیکیشنی با React / Next.js</li>
+          <li>همکاری در تست، یکپارچه‌سازی و تحویل مستمر</li>
+        </ul>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <div class="job">پروژه شخصی — kadooseng.com</div>
+          <div class="dates">فعال</div>
+        </div>
+        <ul>
+          <li>طراحی و توسعه سوپر پرتال شرکتی (kadooseng.com)</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="sec-title">تحصیلات</h2>
+      <hr class="divider" />
+      <div class="entry">
+        <div class="entry-head">
+          <div class="job">کارشناسی مهندسی کشاورزی</div>
+          <div class="dates">۱۳۹۵ – ۱۴۰۰</div>
+        </div>
+        <ul>
+          <li>دانشگاه تهران</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="sec-title">مهارت‌های کلیدی</h2>
+      <hr class="divider" />
+      <ul class="skills">
+        <li>C# / ASP.NET Core</li>
+        <li>CQRS / MediatR / DDD</li>
+        <li>EF Core / PostgreSQL</li>
+        <li>MassTransit / RabbitMQ</li>
+        <li>Redis / SignalR / gRPC</li>
+        <li>YARP / JWT / Identity</li>
+        <li>React / Next.js</li>
+        <li>TanStack Query / Axios</li>
+        <li>RHF / Zod / Zustand</li>
+        <li>MUI / Turborepo</li>
+        <li>Docker / GitLab CI</li>
+        <li>xUnit / Playwright</li>
+      </ul>
+    </section>
+  </article>
+
+  <script>
+    (function () {
+      var img = document.querySelector(".photo-wrap img");
+      var fb = document.querySelector(".photo-fallback");
+      if (!img || !fb) return;
+      img.addEventListener("error", function () {
+        img.style.display = "none";
+        fb.style.display = "flex";
+      });
+      if (img.complete && img.naturalWidth === 0) {
+        img.style.display = "none";
+        fb.style.display = "flex";
+      }
+    })();
+  </script>
+</body>
+</html>

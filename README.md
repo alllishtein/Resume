@@ -80,3 +80,5 @@ in folder joda az git-e backend/frontend. har fasl ye `.md`.
 **Amade:** 00–67 · **Khali (—):** —
 
 Curriculum + tech phase 60–67 complete.
+
+**Resume / checklist:** [resume-professional.md](./resume-professional.md) · [mastery-checklist.md](./mastery-checklist.md)
