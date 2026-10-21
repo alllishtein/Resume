@@ -6,18 +6,19 @@
   <title>Resume — Ali Shafaei</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700&display=swap" rel="stylesheet" />
   <style>
-    /* Canva: White and Black Minimalist Professional Corporate Resume — A4 */
+    /* A4 resume — Inter for reading text, Montserrat only for name & section titles */
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       background: #cfcfcf;
-      font-family: Montserrat, Arial, Helvetica, sans-serif;
-      color: #1a1a1a;
+      font-family: Inter, "Segoe UI", Arial, Helvetica, sans-serif;
+      color: #1f1f1f;
       font-size: 10.5pt;
-      line-height: 1.45;
+      line-height: 1.55;
       -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
     }
 
     .toolbar {
@@ -28,7 +29,7 @@
       padding: 0 8px;
     }
     .toolbar button {
-      font: 600 12px Montserrat, sans-serif;
+      font: 600 12px Inter, sans-serif;
       padding: 8px 16px;
       border: none;
       background: #111;
@@ -41,36 +42,37 @@
       min-height: 297mm;
       margin: 0 auto 28px;
       background: #fff;
-      padding: 16mm 17mm 14mm;
+      padding: 17mm 18mm 15mm;
       box-shadow: 0 2px 18px rgba(0,0,0,.18);
     }
 
-    /* Header: name | photo | contact  (exact Canva structure) */
+    /* Header: name | photo | contact */
     .header {
       display: grid;
       grid-template-columns: 1.15fr auto 1fr;
       align-items: center;
-      column-gap: 20px;
-      margin-bottom: 20px;
+      column-gap: 22px;
+      margin-bottom: 24px;
     }
 
     .name-block { text-align: left; }
 
     .name {
-      font-size: 26pt;
+      font-family: Montserrat, Inter, Arial, sans-serif;
+      font-size: 25pt;
       font-weight: 700;
-      line-height: 1.05;
-      letter-spacing: 0.02em;
+      line-height: 1.1;
+      letter-spacing: 0.03em;
       text-transform: uppercase;
       color: #111;
     }
     .name .line2 { display: block; }
 
     .role {
-      margin-top: 8px;
+      margin-top: 9px;
       font-size: 11pt;
-      font-weight: 400;
-      color: #222;
+      font-weight: 500;
+      color: #333;
     }
 
     .photo-wrap {
@@ -108,43 +110,43 @@
     .contact-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 7px;
+      gap: 9px;
+      margin-bottom: 8px;
     }
     .contact-item:last-child { margin-bottom: 0; }
     .contact svg {
-      width: 13px;
-      height: 13px;
+      width: 14px;
+      height: 14px;
       flex-shrink: 0;
     }
-    .ph { color: #aaa; }
 
     /* Sections */
-    section { margin-bottom: 16px; }
+    section { margin-bottom: 20px; }
 
     .sec-title {
-      font-size: 11pt;
+      font-family: Montserrat, Inter, Arial, sans-serif;
+      font-size: 10.5pt;
       font-weight: 700;
       letter-spacing: 0.14em;
       text-transform: uppercase;
       color: #111;
-      margin-bottom: 5px;
+      margin-bottom: 6px;
     }
 
     .divider {
       border: 0;
-      border-top: 1px solid #bdbdbd;
-      margin: 0 0 10px;
+      border-top: 1px solid #c4c4c4;
+      margin: 0 0 12px;
     }
 
     .summary {
-      font-size: 10pt;
+      font-size: 10.5pt;
       color: #2a2a2a;
-      line-height: 1.5;
+      line-height: 1.6;
       text-align: left;
     }
 
-    .entry { margin-bottom: 11px; }
+    .entry { margin-bottom: 14px; }
     .entry:last-child { margin-bottom: 0; }
 
     .entry-head {
@@ -152,17 +154,18 @@
       justify-content: space-between;
       align-items: baseline;
       gap: 16px;
-      margin-bottom: 3px;
+      margin-bottom: 5px;
     }
     .entry-head .job {
       font-weight: 700;
-      font-size: 10.5pt;
+      font-size: 11pt;
       color: #111;
+      line-height: 1.4;
     }
     .entry-head .dates {
       font-size: 9.5pt;
       font-weight: 500;
-      color: #333;
+      color: #444;
       white-space: nowrap;
     }
 
@@ -171,36 +174,27 @@
       padding-left: 18px;
     }
     .entry li {
-      margin-bottom: 2px;
-      font-size: 10pt;
-      color: #2a2a2a;
-    }
-
-    /* Key skills — 3 columns */
-    .skills {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      column-gap: 24px;
-      row-gap: 4px;
-      list-style: none;
-      padding: 0;
-    }
-    .skills li {
-      position: relative;
-      padding-left: 14px;
-      font-size: 10pt;
-      color: #2a2a2a;
       margin-bottom: 4px;
+      font-size: 10.5pt;
+      line-height: 1.5;
+      color: #2a2a2a;
     }
-    .skills li::before {
-      content: "";
-      position: absolute;
-      left: 0;
-      top: 7px;
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: #111;
+    .entry li::marker { color: #555; }
+
+    /* Key skills — label + items */
+    .skill-row {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 7px;
+      font-size: 10.5pt;
+      line-height: 1.5;
+      color: #2a2a2a;
+    }
+    .skill-row:last-child { margin-bottom: 0; }
+    .skill-row b {
+      flex: 0 0 150px;
+      font-weight: 600;
+      color: #111;
     }
 
     @media print {
@@ -219,7 +213,8 @@
       .page { width: 100%; padding: 28px 22px; min-height: auto; }
       .header { grid-template-columns: 1fr; row-gap: 14px; }
       .contact { justify-self: start; }
-      .skills { grid-template-columns: 1fr 1fr; }
+      .skill-row { flex-direction: column; gap: 2px; }
+      .skill-row b { flex: none; }
     }
   </style>
 </head>
@@ -267,10 +262,7 @@
       <h2 class="sec-title">Summary</h2>
       <hr class="divider" />
       <p class="summary">
-        Full-Stack developer focused on enterprise backends with C# / ASP.NET Core and
-        frontends with React / Next.js. Experience building multi-service access-control
-        platforms using CQRS, DDD, MassTransit/RabbitMQ, Transactional Outbox/Inbox,
-        Redis, SignalR, and a modern Turborepo frontend stack (TanStack Query, React Hook Form, MUI).
+        Full-stack developer building enterprise access-control software with C# / ASP.NET Core and React / Next.js. Focused on clean, event-driven backends and maintainable multi-app frontends.
       </p>
     </section>
 
@@ -284,11 +276,11 @@
           <div class="dates">2023 – Present</div>
         </div>
         <ul>
-          <li>Full-stack development on an enterprise access-control platform (.NET and React)</li>
-          <li>Backend design with CQRS / DDD and event-driven messaging</li>
-          <li>Authentication, role-based access, and realtime features</li>
-          <li>Modern multi-app frontend with React / Next.js</li>
-          <li>Testing, integration, and continuous delivery</li>
+          <li>Built full-stack features for an access-control platform (.NET + React); shipped via Docker and GitLab CI</li>
+          <li>Designed backend services with CQRS / DDD and event-driven messaging (MassTransit, RabbitMQ, Transactional Outbox/Inbox)</li>
+          <li>Designed versioned REST APIs behind a YARP gateway with secure cross-origin auth (HttpOnly refresh cookie + Bearer token, silent refresh) and standardized ProblemDetails errors</li>
+          <li>Delivered realtime features (SignalR) and role-based access across a multi-app Turborepo frontend (Next.js, MUI, TanStack Query)</li>
+          <li>Integrated a Stimulsoft-based reporting microservice into the Next.js / MUI frontend</li>
         </ul>
       </div>
 
@@ -298,7 +290,7 @@
           <div class="dates">Ongoing</div>
         </div>
         <ul>
-          <li>Designed and built personal product at kadooseng.com</li>
+          <li>Designed and developed a corporate super-portal end to end (kadooseng.com)</li>
         </ul>
       </div>
     </section>
@@ -320,20 +312,10 @@
     <section>
       <h2 class="sec-title">Key Skills</h2>
       <hr class="divider" />
-      <ul class="skills">
-        <li>C# / ASP.NET Core</li>
-        <li>CQRS / MediatR / DDD</li>
-        <li>EF Core / PostgreSQL</li>
-        <li>MassTransit / RabbitMQ</li>
-        <li>Redis / SignalR / gRPC</li>
-        <li>YARP / JWT / Identity</li>
-        <li>React / Next.js</li>
-        <li>TanStack Query / Axios</li>
-        <li>RHF / Zod / Zustand</li>
-        <li>MUI / Turborepo</li>
-        <li>Docker / GitLab CI</li>
-        <li>xUnit / Playwright</li>
-      </ul>
+      <div class="skill-row"><b>Backend</b><span>C# / ASP.NET Core, EF Core, PostgreSQL, CQRS / MediatR / DDD, YARP, JWT / Identity</span></div>
+      <div class="skill-row"><b>Messaging &amp; Realtime</b><span>MassTransit, RabbitMQ, Redis, SignalR</span></div>
+      <div class="skill-row"><b>Frontend</b><span>React, Next.js, TypeScript, MUI, TanStack Query, React Hook Form, Zod, Zustand, Turborepo</span></div>
+      <div class="skill-row"><b>DevOps</b><span>Docker</span></div>
     </section>
   </article>
 
@@ -347,7 +329,6 @@
         img.style.display = "none";
         fb.style.display = "flex";
       });
-      // If already broken before listener
       if (img.complete && img.naturalWidth === 0) {
         img.style.display = "none";
         fb.style.display = "flex";

@@ -81,4 +81,6 @@ in folder joda az git-e backend/frontend. har fasl ye `.md`.
 
 Curriculum + tech phase 60–67 complete.
 
+**Design patterns (ketabche-ye joda, bedune ACL):** [design-patterns/00-index.md](./design-patterns/00-index.md) — Repository, UoW, Mediator, CQRS, Chain, Decorator, Factory, Observer, Options, Template Method, Result, Outbox, Inbox, va pattern-haye front (Context, Guard, Interceptor, Query Key, Facade, Adapter, Zustand). Akhar-e har file 10 soal-e mosahebe.
+
 **Resume / checklist:** [resume-professional.md](./resume-professional.md) · [mastery-checklist.md](./mastery-checklist.md)
