@@ -1,111 +1,168 @@
-# 16 — Interceptor (chain + single flight)
-
-*Har request az yek zanjir-e sabet rad mishavad: zaban, site, token, ragham. 401 yek bar refresh mishavad, na dah bar.*
+# 16 — Interceptor va Single Flight
 
 ---
 
 ## Ye khat
 
-Interceptor-e Axios haman **Chain of Responsibility** roye HTTP-e client ast. Har request va har response az tabe'-haye sabt-shode rad mishavad. Caller-e `getDutyCycles` an-ha ra seda nemizanad.
+Har request-e HTTP bayad chand kar-e **hamishegi** rooye khod dashte bashad: token, zaban, tenant, ragham. An kar-ha ra dakhel-e har call copy nemikonim. Yek zanjir, yek bar, dor-e hame-ye call-ha mineshinad.
 
-File: `packages/api-client/src/axiosInstance.ts` — `createApiClient`.
+Va agar sad call-e hamzaman yek manba'-e refresh bekhand, **yek** refresh anjam mishavad, na sad ta.
 
-## Zanjir-e request
+Do mafhoom-and. Avval zanjir. Ba'd single flight. Ba'd code.
 
-```javascript
-client.interceptors.request.use((config) => {
-  config.headers['Accept-Language'] = language || 'fa-IR';
-  config.headers['X-Site-Id'] = siteOverride || siteIds.join(',');
-  if (!isRefreshRequest) {
-    config.headers.Authorization = `Bearer ${accessToken}`;
-  }
-  // params, FormData, JSON → ragham-e farsi/arabi be englisi
-  return config;
-});
+---
+
+# BAKHSH-E AVAL — khode pattern
+
+## Interceptor chist
+
+Interceptor (va esm-e nazdik: middleware-e client) halqe-i ast ke **ghabl** az raftan-e request, ya **ba'd** az residan-e response, dastresi darad. Caller-e `getOrders()` an ra seda nemizanad. Caller faghat URL va body-e business ra midanad.
+
+Sakhtar-ash haman chain of responsibility ast, in bar rooye transport:
+
+```
+getOrders()
+  -> halqe-ye zaban
+  -> halqe-ye token
+  -> halqe-ye tenant
+  -> shabake
+  -> halqe-ye 401
+  -> halqe-ye tarjome-ye khata
+  -> caller
 ```
 
-Site az Zustand **birun-e React** khande mishavad: `useSiteStore.getState().getSiteIds()`. Interceptor hook nist. In dalil-e store-e birun-az-component ast (ketabche-ye 20).
+Har halqe ya `config` ra taghir midahad va rad mikonad, ya zanjir ra miband (masalan "in 401 ast, boro login, in request ra edame nade").
 
-Refresh-e khod-e token **header-e access** nemigirad (`isRefreshRequest`), vagarna ba token-e morde refresh mikoni.
+## Ghanun-haye zanjir-e transport
 
-## Zanjir-e response
+**1. Faghat concern-e hame-ye call-ha.**
+Token male hame ast. "Agar in form-e shift bud, field-e X ra ezafe kon" male hame nist. An ghanun-e yek safhe ast va agar inja beneshinad, hame-ye API-ha an ra ers mibarand. Zanjir-e markazi God Object-e HTTP mishavad.
 
-1. **503** → redirect be `/error/503?system=...` va reject.
-2. **401** ba shart-ha → yek refresh, ba'd retry-e request-e asli.
-3. Baghi-e khata-ha → reject ta UI `getErrorMessage` konad.
+**2. Tartib gharardad ast.**
+Avval token-e taze ra bezar, ba'd log. Avval 401 ra handle kon, ba'd toast-e "khataye na-malum". Tartib-e baraks toast-e dorough ya retry-e bi-token misazad.
 
-Sharayet-e 401 ke refresh **nemishe**:
+**3. Retry bayad saqf dashte bashad.**
+401 → refresh → dobare haman request. Agar haman request dobare 401 shod va haman rah ra beri, loop-e binahayat. Yek flag-e "in ra hanuz retry kardam" saqf ast.
 
-- hamin request ghablan `_retry` shode (loop)
-- URL-e login ya refresh
-- ticket-e public (`isPublicTicketRequest`)
+**4. Request-e khod-e refresh nabayad haman ghanun-e "token-e access ra bechasan" ra koor-koor ers bebarad.**
+Access morde ast. Refresh ba vasile-ye digar (cookie) miravad. Agar access-e morde ra rooye refresh ham bezani, ya server an ra ghalat mifahmad ya loop misazi.
 
-## Single flight
+**5. Zanjir-e client jaye server nist.**
+Client header-e tenant ra **mifrestad**. Server an ra **bavar** mikonad va dobare az rooye session check mikonad. Pak kardan-e header to devtools tenant-e kasi digar nist, agar server dorost bashad. Interceptor rahati-e client ast, marz-e amniat na.
+
+## Single flight chist
+
+Moshkel-e joda az zanjir:
+
+100 request-e hamzaman 401 mishavand. Har kodam mostaghil `POST /refresh` mizanad. Refresh-token-e charkheshi (rotation) eshtebah-e klassik ast: avvalin refresh token-e ghadim ra batel mikonad, 99-taye ba'di ba token-e morde miravand, server hame ra logout mikonad. Session-e salem, bug-e concurrency.
+
+Single flight (va esm-haye nazdik: promise coalescing, in-flight de-duplication):
+
+- avvalin darkhast-e refresh yek `Promise` misazad va an ra **yadash** midarad
+- baghi, ta an promise tamoom nashode, darkhast-e jadid nemisazand. Haman promise ra await mikonand
+- vaghti tamoom shod, yadash pak mishavad. Refresh-e **ba'di** (daghighe-ye ba'd) mojaz ast
+- har 100 caller, ba'd az resolve, request-e khod ra ba token-e taze retry mikonand
+
+Yek safar-e shabake. Sad montazer. Natije-ye moshtarak.
+
+In lock-e thread-e C# nist. To JavaScript yek thread-e event loop dari. "Hamzaman" ya'ni chand promise-e dar-hava, na chand core. Hanooz bug-e sad-refresh vojud darad, chon `if (!promise) promise = start()` agar do bar posht-e sar-e ham **ghabl** az set shodan-e moteghayer ejra shavad... dar JS-e tak-thread, ta avvalin `await`, code-e sync ghat' nemishavad. Pas:
 
 ```javascript
-let refreshPromise = null;
-
 if (!refreshPromise) {
-  refreshPromise = client.post(endpoints.auth.refresh)
-    .finally(() => { refreshPromise = null; });
+  refreshPromise = doRefresh().finally(() => { refreshPromise = null; });
 }
 await refreshPromise;
-return client(originalRequest);
 ```
 
-Dah request-e hamzaman 401 mishavand. Bedune in, dah `POST /auth/refresh`. Refresh token rotation an-ha ra invalidate mikonad va hame logout mishavand.
+ghabl az `await`, hich kas-e digar vared nemishavad. Do 401-e hamzaman (do microtask) bayad **ghabl** az inke avvali `await` konad, promise ra set karde bashad. Shekl-e bala hamin kar ra mikonad: set kardan-e moteghayer sync ast, `await` ba'd-e an ast. Agar avval `await doRefresh()` koni va ba'd moteghayer ra set koni, panjere-ye bug baz ast.
 
-Single flight: **avalin** 401 promise ra misazad, baghi **haman promise** ra await mikonand. Yek refresh, chand retry.
+## Saqf-e shekast-e refresh
 
-In pattern-e **promise coalescing** ast. Nazdik be flyweight nist. Nazdik be "leader election" koochak-e in-memory ast. Esm-e mosahebe: single flight.
+Agar refresh be dalil-e shabake (timeout) fail shavad, 100 caller hamzaman dobare retry mikonand. Mitavani yek modat-e kutah "dobare talash nakon" bezari. Agar fail **401-e khod-e refresh** bashad, an "shabake" nist. Session morde. Bayad logout koni, na 5 sanie sabr-e bi-fa'ide. Do noe shekast, do gharardad.
 
-`refreshBlockedUntil` : age refresh be dalil-e shabake (na 401/403/404) fail shavad, ta 5 sanie refresh-e jadid sakht nemishavad. 401/403/404 block nemishavand ta logout/login ghofl nashavad.
+## Farq-ha
 
-Cookie: `withCredentials: true` ta refresh-e httpOnly beravad. Access to memory/`tokenStorage` ast, na haman cookie.
+**Middleware-e server.** Haman chain, samt-e digar-e sim. Client header mifrestad. Server identity ra misazad. Yeki jay-e digari nist.
 
-## Farq ba middleware-e server
+**Decorator.** Yek call-e moshakhas ra wrap mikoni. Interceptor hame-ye call-haye yek client ra, bedune dast-zadan-e caller. Nazdik-and. Interceptor-e axios shekl-e sabt-shode-ye chain ast.
 
-| | Axios interceptor | ASP.NET middleware |
-|---|---|---|
-| Koja | browser, gabl/ba'd az XHR | server, gabl az endpoint |
-| Kar-e ma | token, site, ragham, refresh | auth-e asl, tenant, route |
+**Cache.** Single flight cache-e natije-ye movaffagh-e dir-baz nist. Faghat **hamin** kar-e dar-hava ra yeki mikonad. Ba'd az `finally` va `null` shodan, call-e jadid dobare shabake ast. Ghalt: refresh-e diruz ra ta abad cache kardan.
 
-Har do chain hastand. Yeki jaye digari nist: UI header ra mitarsanad, server an ra **bavar** mikonad va dobare check mikonad.
+## Eshtebah-haye rayej
 
-## Script-e 60 sanie
+- retry-e bi-saqf
+- chasb-e ghanun-e yek safhe be interceptor-e jahani
+- `await` ghabl az set-e promise-e moshtarak
+- logout-e hamegani rooye 500-e movaghat-e refresh
+- farz-e amniat az header-e client
 
-> "`createApiClient` do interceptor darad. Request zaban, `X-Site-Id` az Zustand, bearer, va normalize-e ragham ra ezafe mikonad. Response 503 ra be safhe-ye khata mibarad. 401 yek `refreshPromise` moshtarak misazad ta request-haye hamzaman yek refresh bezanand, ba'd haman config ra retry mikonad. Login, refresh, va ticket-e public az in halqe birun-and. Access header roye khod-e refresh nemiravad."
+## Mafhoom ra injoori begou
+
+> "Interceptor chain-e transport ast. Caller an ra nemibinad. Faghat concern-e hame-ye call inja mimanad. Retry saqf darad. Single flight ya'ni chand montazer, yek promise-e dar-hava. Set-e promise bayad sync va ghabl az await bashad. Shekast-e shabake va shekast-e 401-e refresh do rah-and. Client jaye check-e server nist."
+
+---
+
+# BAKHSH-E DOVOM — hamin mafhoom to front-e Dejban
+
+`packages/api-client/src/axiosInstance.ts` — `createApiClient`.
+
+**Halqe-ye request.** Zaban az `localStorage` (`Accept-Language`, default `fa-IR`). Site az `useSiteStore.getState().getSiteIds()` — birun-e React, pull, na hook. Override-e `config.siteId` agar yek call site-e digar bekhad. Access token az `tokenStorage`, magar URL khod-e refresh bashad. Ragham-e farsi/arabi to params va FormData va JSON be englisi. In akharin mored adapter-e koochak-e dakhel-e chain ast (ketabche-ye adapter).
+
+**Halqe-ye response.**
+
+- 503 → redirect be `/error/503?system=...` va reject
+- 401, ba shart → single flight-e refresh
+- 403 → toast-e "dastresi nadarid" faghat agar payam-e farsi-e business to body nabashad (ta do ta toast-e tekrari nayad)
+- baghi → reject ta UI khodesh tarjome konad
+
+Sharayet-e **na**-refresh: `_retry` ghablan true (saqf-e yek retry), URL-e login, URL-e refresh, ticket-e public.
+
+**Single flight.** `refreshPromise` birun-e interceptor, dakhel-e `createApiClient`. Avvalin 401 an ra misazad. Baghi `await refreshPromise`. `finally` an ra `null` mikonad. Shekl-e set-e sync ghabl az await re'ayat shode.
+
+Ba'd az 200 va `accessToken`: `tokenStorage.setAccess`, ba'd header-e `Authorization` rooye `originalRequest`, ba'd `client(originalRequest)`. In `client(...)` **dobare** az halqe-ye request rad mishavad. Token-e taze ham to storage hast ham rooye header-e explicit.
+
+`refreshBlockedUntil`: fail-e gheyr-e 401/403/404 ta 5 sanie refresh-e jadid nemisazad. 401/403/404 block nemishavand. An-ha miravand logout (`POST /auth/logout`), `tokenStorage.clear`, `redirectToSignIn`.
+
+`withCredentials: true` ta cookie-ye httpOnly-e refresh beravad. Access to header ast, na haman cookie.
+
+`export const apiClient = createApiClient(...)` yek instance-e moshtarak. Yek `refreshPromise` baraye hame-ye app-hayi ke in module ra import mikonand. Do instance = do single-flight-e joda = dobare sad refresh. Yek instance joz'-e gharardad ast.
+
+---
+
+## Script-e 90 sanie
+
+> "Interceptor zanjir-e ghabl va ba'd az HTTP ast va caller an ra seda nemizanad. Faghat ghanun-e hame-ye call. Single flight chand 401-e hamzaman ra rooye yek promise-e refresh jam' mikonad. Promise bayad ghabl az await set shavad. Dejban to createApiClient zaban, site az Zustand, bearer, va ragham ra mizanad. Refresh khodesh bearer-e morde nemigirad. 401-e hamzaman yek refreshPromise darand. Ba'd token-e taze ham storage ham header mishavad va request-e asli yek bar retry mishavad. 401-e refresh logout ast. Timeout-e refresh 5 sanie block-e narm ast. Yek apiClient, yek single flight."
 
 ---
 
 ## 10 soal
 
-**1. Interceptor kodam pattern ast?**
-Chain of responsibility roye client. Mitavani an ra decorator-e pipeline ham seda koni. Chand halqe, har kodam `config` ra taghir midahad ya short-circuit mikonad.
+**1. Interceptor az nazar-e pattern chist?**
+Chain rooye transport. Mitavanad short-circuit konad ya config ra taghir dahad va rad konad.
 
-**2. Chera single flight?**
-401-e hamzaman. Chand refresh-e hamzaman refresh-token ra mishkanad va session-haye salem logout mishavand.
+**2. Che ghanuni inja mamnoo' ast?**
+Ghanun-e yek safhe. Zanjir hame-ye call-ha ra ers midahad.
 
-**3. `_retry` chera?**
-Ta refresh-e namovaffagh ya 401-e dobare loop-e binahayat nasazad. Yek retry, ba'd error be UI.
+**3. Saqf-e retry chera?**
+401-e ba'd az refresh-e namovaffagh loop misazad. Yek `_retry` kafi ast ta be UI bargardi.
 
-**4. Site ra chera az hook nemikhani?**
-Interceptor birun-e render ejra mishavad. `useSiteStore.getState()` haman snapshot-e store ast.
+**4. Single flight che race-i ra mibandad?**
+Chand refresh-e hamzaman ba token-e charkheshi. Avvalin, baghi ra batel mikonad va session-e salem logout mishavad.
 
-**5. Refresh cookie va access header?**
-Refresh httpOnly ast va browser an ra ba `withCredentials` mifersad. Access ra ma `Authorization` migozarim ta har API an ra bebine. Refresh khodesh bearer-e morde nemikhahad.
+**5. Chera set-e promise ghabl az await ast?**
+Ta do vorudi-e sync, ghabl az deliver-e event loop, haman promise ra bebinand. Set-e ba'd az await panjere-ye do-ta'i baz mikonad.
 
-**6. 503 inja ya error boundary?**
-Interceptor hame-ye call-ha ra yek ja mibinad va be safhe-ye system-unavailable miravad. Error boundary crash-e render ra migirad, na status-e HTTP.
+**6. Fail-e shabake va fail-e 401-e refresh farq?**
+Avval shayad movaghat bashad. Dovom session morde ast. Dovom ra 5 sanie sabr-e bi-logout nakon.
 
-**7. Normalize-e ragham inja chera?**
-Har form yek `toEnglishDigits` faramoosh mikonad. API yek gharardad darad. Zanjir-e markazi an ra ejbari mikonad. An adapter-e koochak ham hast (ketabche-ye 19).
+**7. Client-e interceptor amniat ast?**
+Na. Server tenant va token ra dobare check mikonad.
 
-**8. Race: refresh tamoom, request-e ghadimi hanuz token-e ghadim darad?**
-Code avval `tokenStorage.setAccess` mikonad, ba'd `originalRequest.headers.Authorization` ra ba token-e taze set mikonad, ba'd `client(originalRequest)`. In `client(...)` dobare az interceptor-e request rad mishavad. Header-e explicit va storage har do taze-and. `_retry` jeloye loop-e 401-e dovom ra migirad.
+**8. To Dejban site-id az koja be header miravad?**
+`useSiteStore.getState()` dakhel-e interceptor. Hook nist, chon inja render nist.
 
-**9. Test?**
-Do request-e 401-e hamzaman: `post refresh` **yek** bar. 401 roye `/auth/refresh`: retry-e refresh-e do bar nist. Public ticket: refresh seda nashode.
+**9. Retry chetor token-e ghadim ra nemifrestad?**
+`setAccess` va set-e explicit-e header, ba'd `client(originalRequest)` ke dobare halqe-ye request ra mibinad.
 
-**10. Interceptor-e kheili hooshmand?**
-Zanjir ja-ye business-e yek safhe nist. Age rule-e "faghat in form" ra inja bezani, hame-ye API-ha an ra ers mibarand. Inja faghat concern-e **hame-ye** call-ha: auth, site, zaban, ragham, 503.
+**10. Do `createApiClient` che moshkeli darad?**
+Do `refreshPromise`. Single flight-e yeki digari ra nemibinad. 401-e hamzaman dobare chand refresh mishavad.

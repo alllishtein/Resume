@@ -1,94 +1,171 @@
 # 19 — Adapter
 
-*Do interface ke be ham nemikhorand. Yek class-e nazok tarjome mikonad. Hich kodam ra baz nakon.*
-
 ---
 
 ## Ye khat
 
-Adapter shekl-e A ra be shekl-e B tabdil mikonad ta client faghat B ra bebine. A va B taghir-e dasturi nemikhorand.
+Do taraf **az ghabl** sakhte shode-and va be ham nemikhorand. Hich-kodam ra baz nemikonim. Yek shey-e nazok vasat miminad va zaban-e yeki ra be zaban-e digari tarjome mikonad.
 
-## 1. Error-e axios → jomle-ye UI
+---
 
-`packages/api-client/src/getErrorMessage.ts`
+# BAKHSH-E AVAL — khode pattern
 
-```typescript
-export function getErrorMessage(error: any): string {
-  return extractErrorMessage(error) || 'خطای ناشناخته در انجام عملیات!';
-}
+## Moshkel
+
+Code-e to `string` farsi baraye toast mikhahad. Server `ProblemDetails` midahad: `title`, `errors`, `traceId`, gahi string-e englisi-e "Bad Request". Library-e HTTP khodash object-e `AxiosError` midahad ba `response`, `config`, `stack`.
+
+Seh shekl. Hich-kodam ghalat nist. Har kodam baraye donya-ye khod dorost ast. Agar toast ra avaz koni ta `traceId` ra balad bashad, UI be HTTP vast shode. Agar server ra avaz koni ta faghat yek string-e sade bedahad, hame-ye client-haye digar ra shekaste-i.
+
+Adapter vasat mimanad ta **hich** taraf avaz nashavad.
+
+## Ta'rif-e GoF
+
+Intent: interface-ye yek class ra be interface-i ke client **entezar** darad tabdil kon. Adapter, be class-hayi ke be khater-e interface-ye nasazgar nemitavanand hamkar konand, emkan-e hamkari midahad.
+
+Do shekl-e ketab:
+
+**Object adapter.** Adapter, adaptee ra **composition** mikonad. `adapter.Message(error)` dakhel-ash `error.response.data` ra mikhanad. Adaptee ra subclass nemikoni. Shekl-e ghalib-e emrooz hamin ast, chon ers-bari az type-e `AxiosError` ya az response-e HTTP bi-ma'ni ast.
+
+**Class adapter.** Adapter az adaptee **inherit** mikonad va method-e client ra ham implement mikonad. Faghat vaghti zaban chand-ersi darad va adaptee mal-e khodet ast. Shekanande-tar, kam-estefade-tar.
+
+Mosahebe: "ma object adapter darim" kafi ast, be shart-e betavani composition ra neshon bedahi.
+
+## Sherkat-konande-ha
+
+| Naghsh | Kar |
+|---|---|
+| Target | interface-i ke client mikhahad (`string` farsi, ya `INewCommand`) |
+| Adaptee | chiz-e mojood-e nasazgar (AxiosError, validator-e ghadimi) |
+| Adapter | target ra pish-e client bazi mikonad, dakhel adaptee ra seda mizanad |
+| Client | faghat target |
+
+Client adaptee ra import nemikonad. Agar konad, adapter-e ekhtiari-e shekaste dari.
+
+## Sakhtar-e object adapter
+
+```
+Client -> IMessage.Text()
+            Adapter
+              - adaptee: HttpError
+              - Text() { return pickPersian(adaptee.body) }
 ```
 
-`extractErrorMessage` shekl-haye mokhtalef ra mifahmad: ProblemDetails, string-e farsi, field-haye fanni (`traceId`, `status`, `stack`) ra **rad** mikonad (`IGNORED_KEYS`), va matn-e englisi-e "Bad Request" ra be onvan-e payam-e karbar ghabool nemikonad.
+Yek method-e client. Dakhel, dah field-e bigane. Client an dah ta ra nemibinad.
 
-Client-e UI: "yek string-e farsi". Server: RFC 7807 ya `{ errors: ... }` ya string. Hich kodam be khater-e digari avaz nemishavad. Adapter vasat ast.
+## Ghanun-ha
 
-In hamangoo'i ba Result-e backend ast (ketabche-ye 11): server `ErrorOr` ra be ProblemDetails tabdil mikonad, client ProblemDetails ra be toast tabdil mikonad. Do adapter, do boundary.
+**1. Tarjome, na ghanun-e jadid.**
+Adapter "email khali na-motabar ast" ra **ejad** nemikonad. An ghanun-e domain ya validator ast. Adapter faghat migoyad "in shekl-e khata, an shekl-e reshte". Agar ghanun-e mahsul inja beravad, do ja ghanun dari va UI va server joda mishavand.
 
-## 2. Ragham-e farsi → ragham-e API
+**2. Pure. Bedune I/O.**
+Adapter shabake nemizanad, database nemikhanad. Vorudi-e x, khoruji-e y. Test-ash jadval-e vorudi/khoruji ast. I/O an ra service mikonad.
 
-Request interceptor `toEnglishDigits` va `normalizeDigitsDeep` ra roye params, `FormData`, va JSON mizanad. Keyboard-e farsi `۱۲۳` mifersad. API `123` mikhahad. Form-ha adapter nistand. Zanjir-e HTTP adapter ast.
+**3. Field-e fanni ra tarjome-ye "baraye ensan" nakon.**
+`traceId`, stack, "Internal Server Error" etela'at-e mohandes-and. Adapter-e khoob an-ha ra **hazf** mikonad ya joda migozarad, na inke be toast-e karbar besparad. Tarjome hamishe 1:1 nist. Gahi tarjome = andakhtan.
 
-Agar farda contract avaz shavad va server khodash ragham-e farsi ra bepazirad, yek ja (interceptor) ra bar midari, na 80 form.
+**4. Default-e akhar gharardad ast.**
+Agar adaptee hich chiz-e ghabel-e namayesh nadasht, client `undefined` nabinad. Yek jomle-ye sabet. An jomle khodesh tarjome-ye "nadashtim" ast.
 
-## 3. Adapter-e koochak-e backend
+**5. Adapter-e do-jahate (two-way) kam va geran ast.**
+Ham A→B ham B→A. Vaghti har do taraf bayad digari ra seda bezanand. Aksar-e adapter-haye to yek-jahate-and. Do-jahate ra esm nabar magar vaghe'an har do rah ra neveshte bashi.
 
-`UpdateVisitReservation` validator-e **create** ra ba yek class-e dakheli-e adapter dobare estefade mikonad:
+## Ja-haye rayej
 
-`Visitors/.../UpdateVisitReservation/UpdateVisitReservationCommandValidator.cs`
+- shekl-e khataye HTTP → matn-e UI
+- ragham va tagvim-e vorudi-ye ensan → shekl-e gharardad-e API
+- object-e ghadimi-e yek ketabkhane → interface-e jadid-e code-e to
+- validator-e yek command ke bayad rooye command-e digar, bedune copy, ejra shavad
 
-```csharp
-private sealed class CreateVisitReservationCommandValidatorAdapter
-    : AbstractValidator<UpdateVisitReservationCommand>
-```
+Akharin mored ziba ast: adaptee validator-e `Create` ast. Target validator-e `Update` ast. Adapter field-haye update ra be shekl-i mirizad ke validator-e create mifahmad. Ghanun-e create copy nemishavad. Type-e create, type-e update ra nemishnasad.
 
-Ghanun-haye create roye shekl-e update ejra mishavand bedune copy-paste va bedune inke validator-e create type-e update ra beshnasad. Esm-e class khodesh "Adapter" ast. Koochak ast vali mesal-e vaghe'i-e haman pattern, bedune ACL.
+## Farq-ha
 
-## Farq-hayi ke interview-er eshtebah migirad
+**Facade.** Facade subsystem-e **khodet** ra sade mikonad. Adapter interface-ye **bigane** ra jor mikonad. Facade mitavanad dakhel-ash adapter dashte bashad. Esme-ha avaz nashavand.
 
-| | Adapter | Facade | Decorator |
-|---|---|---|---|
-| Interface-e khoruji | **motefavet** az dakheli | sade-shode-ye haman subsystem | **haman** interface |
-| Hadaf | nasazgari | sadegi | behavior-e ezafe |
-| Mesal | axios error → string | `getDutyCycles` | idempotent handler |
+**Decorator.** Decorator **haman** interface ra wrap mikonad va raftar ezafe mikonad. Adapter interface-ye **digar** misazad. Agar khoruji va vorudi yek gharardad-and, decorator ast. Agar nistand, adapter.
 
-Agar `getErrorMessage` ra facade seda koni, jomle-at shel ast. Facade subsystem ra sade mikonad. Inja do gharardad-e nasazgar tarjome mishavand.
+**Mapper (AutoMapper / Mapster).** Map-e field-e ham-nam, ya ham-ma'ni, bein-e do DTO. Adapter vaghti **gharardad** farq darad (khata, ragham, command-e digar), na vaghti `FirstName` → `firstName`. Mapper-e 1:1 adapter-e sabok ast. Agar faghat rename ast, an ra adapter-e GoF boland seda nakon. Agar shekl-e khata ra be shekl-e toast tabdil mikoni, adapter ast.
 
-Agar interceptor-e ragham ra decorator-e axios seda koni, nazdik ast (wrap-e request) vali **hadaf** taghir-e shekl-e data ast, na ezafe kardan-e log/cache. Begou adapter-e dakhel-e chain.
+**Bridge.** Bridge abstraction va implementation ra joda mikonad ta har do **mostaghel** rost konand (az avval tarahi shode). Adapter ba'd-az-sakht-e do chiz-e nasazgar miayad. Bridge pishgiri. Adapter darman. So'al-e klassik-e mosahebe hamin do jomle ast.
 
-## Script-e 60 sanie
+## Koja bezan, koja nazan
 
-> "Adapter-e asli-e front `extractErrorMessage` ast: ProblemDetails va error-e axios ra be yek jomle-ye farsi tabdil mikonad va field-e fanni ra hazf mikonad. Dovomi normalize-e ragham to interceptor ast ta form-ha joda `۱۲` ra tabdil nakonand. To backend, validator-e update yek adapter-e dakheli darad ke ghanun-e create ra roye command-e update ejra mikonad. Hich kodam decorator nist chon interface-e do taraf yeki nist."
+Bezan vaghti do shekl-e mojood ra nemitavani avaz koni va client nabayad shekl-e bigane ra bebine.
+
+Nazan vaghti khodet har do taraf ra hamin emruz misazi. Pas az avval yek interface besaz. Adapter-e ezafe vasat-e code-e khodet parsa-bazi ast.
+
+## Eshtebah-haye rayej
+
+- Adapter-i ke fetch mikonad
+- Andakhtan-e `traceId` to toast "chon to response bud"
+- Copy-e ghanun-e validation dakhel-e adapter
+- Seda kardan-e har wrapper "adapter", hatta vaghti interface yeki ast (an decorator ya facade ast)
+
+## Mafhoom ra injoori begou
+
+> "Adapter do interface-e az ghabl nasazgar ra, bedune taghir-e hich-kodam, jor mikonad. Shekl-e ghalib object adapter ast: composition, na inheritance. Pure ast, I/O nadarad. Mitavanad field-e fanni ra hazf konad, na faghat rename. Facade sade mikonad, decorator haman interface ra negah midarad, bridge az avval joda tarahi mikonad. Adapter ba'dan vared mishavad."
+
+---
+
+# BAKHSH-E DOVOM — hamin mafhoom to Dejban
+
+**1. Khataye HTTP → jomle-ye UI.**
+`packages/api-client/src/getErrorMessage.ts` va `extractErrorMessage.ts`.
+
+Target: `string`. Adaptee: `unknown` / error-e axios / body-ye server. Client-e toast adaptee ra baz nemikonad.
+
+`extractErrorMessage` shekl-haye mokhtalef ra mifahmad va `IGNORED_KEYS` chiz-hayi mesl-e `traceId`, `stack`, `status`, `config` ra rad mikonad. Matn-e englisi-e status-e HTTP ("Bad Request") ra be onvan-e payam-e karbar ghabool nemikonad. In haman "tarjome = andakhtan-e field-e fanni" ast.
+
+`getErrorMessage` agar chizi namand, `'خطای ناشناخته در انجام عملیات!'` barmigardanad. Default-e akhar.
+
+I/O nist. Jadval-e test: ProblemDetails-e farsi → haman jomle. Body-e fanni-e khali → default.
+
+Samt-e server, `ErrorOr` be ProblemDetails tabdil mishavad. An ham adapter-e marz ast (domain HTTP nemishnasad). Do adapter, do marz: server type-e domain ra be HTTP, client HTTP ra be jomle.
+
+**2. Ragham-e ensan → ragham-e gharardad.**
+Interceptor `toEnglishDigits` va `normalizeDigitsDeep` ra rooye params, FormData, va JSON mizanad. Keyboard `۱۲۳` mifrestad. API `123` mikhahad. Form-ha adaptee nistan. Yek ja-ye markazi target ra misazad. Agar farda server khodash ragham-e farsi ra bepazirad, haman yek ja avaz mishavad, na 80 form.
+
+In adapter **dakhel-e** chain-e interceptor neshast. Chain pattern-e joda ast. Tarjome-ye ragham pattern-e joda. Yek file, do mafhoom. An-ha ra yek esm nakon.
+
+**3. Validator-e create rooye command-e update.**
+`UpdateVisitReservationCommandValidator` class-e dakheli-e `CreateVisitReservationCommandValidatorAdapter` darad. Esm-e khod-e code "Adapter" ast. Ghanun-e create rooye shekl-e update ejra mishavad, bedune inke validator-e create type-e update ra beshnasad. Object adapter-e koochak-e backend. Nokte-ye bakhsh-e avval: faghat ghanun-e **moshtarak**. Agar update yek ghanun-e ekhtelafi darad (id ejbari), an ra koor-koor be create naspar.
+
+---
+
+## Script-e 90 sanie
+
+> "Adapter vasat-e do interface-e nasazgar ast va hich taraf ra edit nemikonad. Object adapter composition ast. Pure ast. Facade sade-sazi ast, decorator haman interface, bridge tarahi-e avval. Front do adapter darad: extractErrorMessage shekl-e axios va ProblemDetails ra be string-e farsi tabdil mikonad va traceId va Bad Request-e englisi ra mindazad. Default-e jomle-ye na-malum darad. Dovom ragham-e farsi be englisi dakhel-e interceptor, ta form-ha joda an ra faramoosh nakonand. Backend validator-e update yek adapter-e dakheli darad ke ghanun-e create ra rooye command-e update ejra mikonad."
 
 ---
 
 ## 10 soal
 
-**1. Adapter key lazem ast?**
-Vaghti do system-e mojood ra nemitavani avaz koni va be ham nemikhorand: library, HTTP, ya yek validator-e ghadimi va yek command-e jadid.
+**1. Adapter che chizi ra avaz nemikonad?**
+Adaptee va client. Faghat vasat tarjome ezafe mishavad.
 
 **2. Object adapter va class adapter?**
-Object: adapter, adaptee ra **composition** mikonad (`extractErrorMessage(error)`). Class: inheritance az adaptee. Ma object adapter darim. Composition inja behtar ast chon shekl-e error irsi nist.
+Avval composition. Dovom inheritance az adaptee. Avval shekanande-tar nist va baraye type-e bigane dorost ast.
 
-**3. Chera IGNORED_KEYS?**
-Ta `traceId` va "Internal Server Error" be karbar naresad. Adapter filter ham hast, na faghat rename.
+**3. Chera I/O dakhel-e adapter shekast ast?**
+Tarjome dige pure nist. Test-e jadval-i az beyn miravad va adapter service-e penhan mishavad.
 
-**4. Default-e `'خطای ناشناخته...'`?**
-Agar adaptee hich matn-e ghaabel-e namayesh nadashte bashad, UI `undefined` toast nakonad. Yek payam-e sabet-e akhar.
+**4. Farq ba decorator?**
+Decorator haman interface, raftar-e ezafe. Adapter interface-ye digar.
 
-**5. Adapter va mapper (Mapster)?**
-Mapster field-e ham-nam ra copy mikonad. Adapter vaghti **gharardad** farq darad (error shape, ragham, command-e digar), na vaghti `FirstName` → `firstName`.
+**5. Farq ba bridge?**
+Bridge az avval abstraction va implementation ra joda mikonad. Adapter do chiz-e az ghabl nasazgar ra ba'dan jor mikonad.
 
-**6. Ragham ra to Zod ham mitavan tabdil kard. Chera interceptor?**
-Zod har form. Yek form-e jadid faramoosh mikonad. Interceptor hame-ye body-ha ra mibinad. Zod hanuz baraye ghanun-e field khoob ast. Do laye-ye mokhtalef.
+**6. Farq ba mapper-e field?**
+Mapper rename-e ham-ma'ni. Adapter vaghti gharardad farq darad, masalan khata-ye HTTP be jomle-ye ensan.
 
-**7. Adapter-e validator risk?**
-Ghanun-e create roye update shayad yek field-e ekhtelaf dashte bashad (id ejbari-e update). Adapter bayad faghat ghanun-e moshtarak ra vasl konad, na hame chiz ra koor-koor.
+**7. `IGNORED_KEYS` kodam ghanun-e adapter ast?**
+Tarjome mitavanad andakhtan bashad. Field-e fanni target-e ensan nist.
 
-**8. Test-e extractErrorMessage?**
-Input-e ProblemDetails-e farsi → haman jomle. Input-e `{ traceId, title: 'Bad Request' }` → default ya hich matn-e englisi. Input-e string-e sade → haman string.
+**8. Default-e jomle-ye na-malum chera?**
+Ta client `undefined` nabinad vaghti adaptee hich matn-e ghabel-e namayesh nadarad.
 
-**9. Adapter mitavanad network bezanad?**
-Nabayad. Adapter tarjome-ye pure ast. I/O an ra test-napazir va chand-mas'uliat mikonad.
+**9. Ragham-e farsi kodam pattern ast, va chera to interceptor ast?**
+Adapter-e shekl-e vorudi. Jay-ash chain-e hame-ye call-ha ast ta yek form faramoosh nakonad. Jay-ash ma'ni-e "interceptor = adapter" nist.
 
-**10. Chand shekl-e error-e jadid az server?**
-Yek tabe' ra gostaresh bedeh va yek test-e jadid. 40 toast-e component ra dast nazan. Hamin dalil-e jam' kardan-e adapter ast.
+**10. Adapter-e validator-e visit che khatari darad?**
+Ghanun-e ekhtelafi-e update (mesl-e ejbari budan-e id) koor-koor az create ers mibarad. Faghat moshtarak-ha ra vasl kon.

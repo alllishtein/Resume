@@ -1,109 +1,172 @@
 # 18 — Facade
 
-*UI yek dar-e sade mibinad. Axios, URL, va shekl-e error posht-e an-and.*
-
 ---
 
 ## Ye khat
 
-Facade yek interface-e koochak jelo-ye yek subsystem-e pechide ast. Client `getDutyCycles(params)` seda mizanad. Nemidanad base URL, header, interceptor, va inke response `.data` ast.
+Yek subsystem chand class va chand gharardad-e zesht darad. Facade **yek vorudi-ye sade** jelo-ye an mizarad. Client subsystem ra nemibinad. Faghat haman vorudi ra mibinad.
 
-## Shekle in frontend
+---
+
+# BAKHSH-E AVAL — khode pattern
+
+## Moshkel
+
+Ferestadan-e yek SMS shayad in-ha ra bekhad: sakhtan-e client, login-e vendor, map-e shomare, retry, tarjome-ye code-e khata, bastan-e connection. Agar har safhe in shesh ta ra balad bashad:
+
+- taghir-e vendor = taghir-e har safhe
+- yek safhe retry ra faramoosh mikonad
+- test-e safhe bedune vendor-e vaghe'i sangin mishavad
+
+Facade yek method ast: `sendSms(to, text)`. Shesh ta posht-e an. Safhe vendor ra nemishnasad.
+
+## Ta'rif-e GoF
+
+Intent: interface-ye sath-bala-ye **vahed** bedeh be yek subsystem, ta estefade-ye an asan-tar shavad. Facade chand class-e dakheli ra orkestre mikonad. Client-ha faghat facade ra mishenasand.
+
+Nokte-ye ketab ke aksaran ja mioftad: facade **mamnoo'iyat** nist. Class-haye dakheli hanuz public-and baraye kasi ke kar-e pishrafte mikhahad. Facade rah-e **addi** ra sade mikonad. Agar hame-ye rah-haye pishrafte ra ham az facade pass-through koni, sade-gi tamoom shode. Shode proxy-ye sholugh.
+
+## Sherkat-konande-ha
+
+| Naghsh | Kar |
+|---|---|
+| Facade | API-e kam-vaghf, zaban-e client |
+| Subsystem | class-haye zesht-e dakheli. Yekdigar ra mishenasand |
+| Client | faghat facade |
+
+Client `new` rooye class-e dakheli-e subsystem nemizanad. Agar bezanad, facade-ye ekhtiari-e bi-arzesh dari va rah-e dovom-e pichide baz mimanad.
+
+## Sakhtar
+
+```
+Safhe --> SmsFacade.send(to, text)
+              |-- AuthClient
+              |-- PhoneNormalizer
+              |-- VendorSdk
+              |-- ErrorMapper
+```
+
+Felesh-e safhe faghat be facade ast. Felesh-haye dakheli az safhe penhan-and.
+
+Chand laye-ye facade ham mojaz ast, be shart-e har laye **danesh-e joda** ra penhan konad:
+
+```
+View  -->  "list ra bekesh"          (nemidanad cache chist)
+Hook  -->  cache + invalidate        (nemidanad URL)
+Http  -->  URL + method              (nemidanad header-e token)
+Client --> token, retry, ragham
+```
+
+In "se class-e facade-ye too-daro" ast. GoF yek class keshide. Mafhoom haman ast: har client-e bala, zir-e khod ra kam mibinad. Agar har laye haman danesh ra dobare repeat konad, laye-ye ezafe dari, facade na.
+
+## Ghanun-ha
+
+**1. Facade zaban-e client ra harf mizanad, na zaban-e vendor.**
+`sendSms` na `vendor.post("/v2/messages", { msisdn, tpl })`. Agar emzaye facade haman JSON-e vendor bashad, chizi penhan nashode.
+
+**2. Yek facade, yek subsystem.**
+`Utils.sendSms` va `Utils.parseExcel` va `Utils.hashPassword` facade nist. Kise-ye god ast. Facade-ye SMS faghat SMS.
+
+**3. Business-e mahsul ra posht-e facade-ye transport qayem nakon.**
+"In shift ghablan publish shode, digar edit nashavad" ghanun-e domain ast. Facade-ye HTTP an ra balad nist. Agar balad shavad, ham transport ast ham ghanun, va test-e ghanun be shabake vasl mishavad.
+
+**4. Facade-ye khoob orkestre mikonad, algorithm-e jadid-e penhan-e khatar nak.**
+Retry va map-e khata orkestrasyon-e subsystem-and. "Gheymat ra inja hesab kon chon server nemidanad" algorithm-e jadid-e khatar ast. Do manba'-e gheymat.
+
+**5. Rah-e pishrafte mitavanad kenar-e facade baz bemanad.**
+GoF in ra mojaz midanad. Vali rah-e addi nabayad majbur be rah-e pishrafte bashad. Agar har call bayad `config` 20 field-i pas bedahad, facade shekaste.
+
+## Farq-ha — so'al-e hatmi-e se-ta'i
+
+| | Facade | Adapter | Mediator |
+|---|---|---|---|
+| Hadaf | sade kardan-e **yek** subsystem | jor kardan-e **do** interface-e nasazgar | colleague-ha yekdigar ra neshanasand |
+| Shekl-e khoruji | API-e jadid-e rahat | API-e samt-e digar, hamon ke hast | vasete-ye bein-e chand object-e ham-arz |
+| Dakhel | chand class ke ghablan ham-dashe-and | yek adaptee | chand colleague-e mostaghel |
+
+Adapter `ErrorResponse`-e vendor ra be `string`-e farsi-e to tabdil mikonad. Facade `sendSms` ra sade mikonad va **daroon-ash** mitavanad yek adapter ham dashte bashad. Facade adapter ra **dar bar migirad**. Adapter facade nist.
+
+Mediator bein-e object-hayi ke **ham-arz**-and mistanad ta be ham vast nashavand. Facade bein-e client-e **balatar** va subsystem-e **pa'intar** mistanad. Jahat-e felesh farq darad.
+
+## Koja bezan, koja nazan
+
+Bezan vaghti chand call-e hamishegi-e posht-e sar-e ham dari va nemikhahi har client an tartib ra balad bashad.
+
+Nazan vaghti yek function-e yek khati ra `XxxFacade` minami va hich tartibi posht-ash nist. Esm-e bozorg, joda'i-e sefr.
+
+## Eshtebah-haye rayej
+
+- God utils
+- Pass-through-e hame-ye option-haye vendor
+- Ghanun-e business dakhel-e facade-ye HTTP
+- Do rah: yeki facade, yeki import-e mostaghim-e SDK. Rah-e dovom taghir-e vendor ra shekaste mikonad
+
+## Mafhoom ra injoori begou
+
+> "Facade vorudi-ye sade-ye yek subsystem ast. Client class-haye dakheli ra new nemikonad. Zaban-ash zaban-e client ast na vendor. Yek facade yek subsystem. Adapter do interface-e nasazgar ra tarjome mikonad va mitavanad dakhel-e facade bashad, khodesh facade nist. Mediator ham-arz-ha ra az ham joda mikonad. Facade bala ra az pa'in joda mikonad. Business-e mahsul ra to facade-ye transport nemizaram."
+
+---
+
+# BAKHSH-E DOVOM — hamin mafhoom to front-e Dejban
+
+Chand laye, har kodam facade-ye pa'in-e khod:
 
 ```
 page.jsx
-  → View (sections/...)
-      → hook: useDutyCycles          services/*.service.js
-          → queryKey factory
-          → getDutyCycles             services/*.http.js ya *.https.js
-              → apiClient.get        packages/api-client
-                  → interceptor-ha
+  -> View (sections/...)
+      -> hook to services/*.service.js      cache, enabled, invalidate
+          -> tabe' to services/*.http.js     URL va method
+              -> apiClient                   token, site, refresh, ragham
 ```
 
-Har laye yek kar:
+View `axios` ra import nemikonad. Service `Authorization` ra nemidanad. Http `queryClient` ra nemidanad. In haman "har laye danesh-e pa'in ra penhan karde".
 
-| Layhe | Midanad | Nemidanad |
-|---|---|---|
-| page / view | chi neshan bedahad | URL |
-| `*.service.js` | cache, mutation, invalidate | header-e bearer |
-| `*.http.js` | URL va method | refresh-e 401 |
-| `apiClient` | token, site, ragham, 503 | kodam feature |
+Mesal: `useDutyCycles` to `duty-roster.service.js` faqat `queryKey` va `getDutyCycles(params)` ra midanad. `getDutyCycles` to file-e http/https URL ra midanad. File-e duty roster `duty-roster.https` nam darad. Gharardad-e module `*.http.js` ast. `.https` esm-e miras ast, pattern-e dovom nist. To mosahebe begou ta do olgu seda nakoni.
 
-In **se** facade-e too-daro ast, na yek class-e `ApiFacade`. Mosahebe hamin ra ghabool mikonad age daghigh bashi: "har laye facade-e laye-ye pa'in ast."
+`empType` shekl-e tamiz-tar: `emp-type.keys.js` joda, http joda, service joda. Hoviat-e cache (ketabche-ye ghabl) va transport joda mimanand.
 
-## Mesal-e duty roster
+`createItem(url, data)` va `getWithParams` to `axiosInstance.ts` facade-ye **kheili koli** hastand. URL hanuz male caller ast. `getDutyCycles` URL ra ham ghom mikonad. Dovomi facade-ye feature ast. Avvali faghat kotah-kardan-e `axios.post`. Arzesh-e dovomi bishtar ast.
 
-`duty-roster.service.js` az `./duty-roster.https` import mikonad (`getDutyCycles`, `publishDutyCycle`, ...). Hook:
+`IEndpoint` va `AddPersonnelsModule()` samt-e server haman fekr-and, ba esm-e digar: yek vorudi (`MapEndpoint` / `AddXxxModule`) va subsystem-e posht-ash. Agar porsidand "faghat front facade darad?" na. Vali mesal-e roozane-ye to laye-ye http ast.
 
-```javascript
-export const useDutyCycles = (params, enabled = true) =>
-  useQuery({
-    queryKey: dutyRosterKeys.cycles(params),
-    queryFn: () => getDutyCycles(params),
-    enabled,
-  });
-```
+Ghanun-e "in shift ra dobare publish nakon" to `*.http.js` nist. Server an ra darad. Facade-ye front transport mimanad.
 
-View `useQuery` va axios ra ba ham ghalt nemikonad. File-e `.https.js` esm-e ghalat-e miras ast (bayad `.http.js` bashad). Pattern-e gharardad-e module: `*.http.js`. Begou esm-e miras ra, ta fekr nakonand do olgu dari.
+---
 
-`empType` shekl-e tamiz-tar: `emp-type.keys.js` joda, http joda, service joda.
+## Script-e 90 sanie
 
-Helper-haye `createItem` / `updateItem` / `getWithParams` to `axiosInstance.ts` facade-e **kheili** koli hastand: URL ra hanooz caller midahad. Facade-ye feature (`getDutyCycles`) URL ra ham ghom mikonad. Dovomi arzeshesh bishtar ast.
-
-## Backend ham facade darad, ba esm-e digar
-
-`IEndpoint` yek method `MapEndpoint` ast. `Program` handler-e har route ra nemishnasad. An facade-e koochak-e "in module route-hayash ra khodash sabt kon" ast, na facade-e klasik-e GoF ba dah method. An ra faghat age porsidand "front tanha facade darad?" begou.
-
-Module-e `AddPersonnelsModule()` ham yek facade-e DI ast: sad `AddScoped` posht-e yek method.
-
-## Key facade zede-pattern mishavad
-
-- Class-e `Utils` ke 80 method-e bi-rabt darad. Facade bayad **yek** subsystem ra bepooshand.
-- Facade-i ke hame-ye option-haye axios ra pas dahad (`config` ra az 4 laye rad koni). Pas chizi penhan nashode.
-- Business rule dakhel-e `*.http.js`. An ja faghat transport ast. Ghanun-e "in shift ghablan publish shode" ya to UI-e koochak ast ya, behtar, to server.
-
-## Farq
-
-| | Facade | Adapter |
-|---|---|---|
-| Hadaf | sade kardan-e yek subsystem | tarjome-ye do interface-e nasazgar |
-| Shekl | API-e jadid-e rahat | API-e mojood-e samte digar |
-| Inja | `getDutyCycles` | `getErrorMessage` (ketabche-ye 19) |
-
-## Script-e 60 sanie
-
-> "Safhe axios ra import nemikonad. Hook-e service cache ra midanad va tabe'-e http ra seda mizanad. Tabe'-e http faghat URL va method ast. `apiClient` header, refresh, va ragham ra midanad. Har laye facade-e pa'in ast. Esm-e `.https.js` to duty roster miras ast, gharardad `*.http.js` ast. Business rule ra to http nemizarim."
+> "Facade yek vorudi-ye sade jelo-ye subsystem ast. Client dakheli ra new nemikonad. Farq-ash ba adapter: adapter tarjome mikonad, facade sade mikonad. Farq-ash ba mediator: jahat-e bala-be-pa'in, na ham-arz. Front-e Dejban se laye darad: hook cache ra midanad, http URL ra, apiClient token va refresh ra. View axios nemibinad. duty roster file-ye .https darad vali gharardad .http ast. createItem URL ra penhan nemikonad, getDutyCycles mikonad. Ghanun-e business to http nist."
 
 ---
 
 ## 10 soal
 
-**1. Facade che moshkeli ra hal mikonad?**
-Tedad-e dependency-e zehni. Caller yek method mibinad, na dah class-e subsystem.
+**1. Facade che felesh-i ra hazf mikonad?**
+Felesh-e client be class-haye dakheli-e subsystem. Faghat felesh be vorudi-ye sade mimanad.
 
-**2. Inja class-e Facade ko?**
-Layhe-ha: `service` → `http` → `apiClient`. Esm-e class mohem nist. Joda budan-e danesh mohem ast.
+**2. Chera pass-through-e hame-ye option shekast ast?**
+Chon client dobare zaban-e vendor ra balad ast. Chizi sade nashode.
 
-**3. Chera http va service joda-and?**
-Http ra bedune React test mikoni (URL, method, body). Service ra baraye cache va invalidate. Ghalt kardan-e an-ha har taghir-e UI ra be URL michasbanad va baraks.
+**3. Facade va adapter?**
+Facade sade mikonad. Adapter do gharardad-e nasazgar ra jor mikonad. Facade mitavanad dakhel-ash adapter dashte bashad.
 
-**4. `createItem(url, data)` facade-ye kafi ast?**
-Baraye kam kardan-e `axios.post` bale, baraye feature na. Caller hanuz URL-e magic darad. `getDutyCycles` URL ra mal-e feature mikonad.
+**4. Facade va mediator?**
+Facade bala va pa'in. Mediator chand ham-arz. Jahat farq darad.
 
-**5. Facade va repository-e backend?**
-Har do "posht-e man ra nabin". Repository jolo-ye database ast. Http facade jolo-ye HTTP ast. Handler `DbContext` ra nemibinad, view `axios` ra nemibinad.
+**5. Chand laye-ye facade key dorost ast?**
+Vaghti har laye danesh-e motefaveti ra penhan mikonad. Vaghti hamash yek danesh-e tekrar ast, laye-ye ezafe ast.
 
-**6. Error ra facade partab konad ya tarjome konad?**
-Http mitavanad error-e kham-e axios ra rad konad. Tarjome be jomle-ye farsi kar-e adapter (`getErrorMessage`) ast ta http ham transport bemanad va ham UI. Yek laye, yek dalil.
+**6. Business rule to facade-ye HTTP?**
+Na. Transport va orkestr-e call. Ghanun-e mahsul server ya domain ast.
 
-**7. Invalidate koja?**
-Service, ba'd az mutation, chon service key ra midanad. Http nabayad `queryClient` bebine. An shekastan-e facade ast.
+**7. To Dejban view che chizi ra nemidanad?**
+URL, header, refresh, va shekl-e axios. Hook va http an ra penhan karde-and.
 
-**8. Chand app (`dejban`, `gate`, `dcc`) yek client?**
-`export const apiClient = createApiClient(...)` yek instance-e moshtarak. Facade-ye transport yek dane ast. Facade-ye feature per app mimanad chon URL-e feature yeki nist.
+**8. `.https.js` pattern-e joda ast?**
+Na. Esm-e miras. Gharardad `*.http.js` ast.
 
-**9. Over-facade?**
-Wrapper-e 1 khati dore-ye har chiz, bedune joda kardan-e danesh. Age `getX` faghat `apiClient.get` ast va hich URL-e sabeti nadarad, laye-ye ezafe ast.
+**9. `createItem` che kam darad nesbat be `getDutyCycles`?**
+URL hanuz caller ast. Facade-ye feature URL ra ham male feature mikonad.
 
-**10. Test?**
-Http: mock-e `apiClient` va expect-e path. Service: mock-e tabe'-e http, na mock-e interceptor. Interceptor test-e joda-ye `createApiClient` ast. Har laye dobare test-e laye-ye pa'in ra tekrar nemikonad.
+**10. Rah-e dovom-e import-e mostaghim-e axios to view che moshkeli darad?**
+Taghir-e token ya refresh yek view ra ja migozarad. Facade-ye ekhtiari-e shekaste.

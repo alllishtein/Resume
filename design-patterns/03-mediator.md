@@ -1,115 +1,190 @@
-# 03 — Mediator (MediatR)
-
-*Sender nemidanad ki javab midahad. Yek vasete in ra mifahmad.*
+# 03 — Mediator
 
 ---
 
 ## Ye khat
 
-Mediator ertebat-e mostaghim-e chand object ra hazf mikonad. Hame be yek vasete sohbat mikonand. Inja vasete **MediatR** ast va payam `ICommand` / `IQuery` ast.
+Vaghti chand object bayad ba ham kar konand, bejaye inke har kodam baghi ra beshnasad, hame faghat **yek vasete** ra mishenasand. Vasete tasmim migirad in payam be ki beravad.
 
-## Moshkel bedune mediator
+---
 
-Endpoint bayad handler ra beshnasad, handler bayad validator ra seda bezanad, va har endpoint log va exception-e khod ra copy konad. Ba 8 module, in web-e dependency ast: Presentation → hame-ye handler-ha.
+# BAKHSH-E AVAL — khode pattern
 
-Ba mediator:
+## Moshkel
+
+Dah object ke har kodam mostaghim baghi ra seda mizanad, `10 × 9` felesh-e "man to ra mishnasam" misazad. Avaz kardan-e yeki, baghi ra mikeshad. Test-e yeki, sakhtan-e noh-taye digar ra mikhahad.
+
+In web-e object-ha ast. Mediator an ra setare mikonad: hame faghat vasete ra mishenasand. Tedad-e felesh-e vaghe'i az moraba' be khati miravad.
+
+## Ta'rif-e GoF
+
+Intent-e ketab: interaction-e yek grup object ra dakhel-e yek object-e mediator jam' kon. Object-ha lazem nist yekdigar ra refer konand. An-ha mostaghel mishavand, va interaction-eshan joda avaz mishavad.
+
+Kalame-ye mohem: **interaction**. Mediator faghat "yeksan konande-ye function call" nist. Ja-i ast ke **ghava'ed-e hamkari** zendegi mikonad. "Agar dialog-e login submit shod, button-e OK fa'al shavad va text-box-e khata pak shavad" — in ghanun-e dialog ast, na ghanun-e button. Button mediator ra seda mizanad. Button text-box ra nemishnasad.
+
+## Sherkat-konande-ha
+
+| Naghsh-e GoF | Mani |
+|---|---|
+| Mediator | interface-e vasete. Colleague-ha in ra mishenasand |
+| ConcreteMediator | ghanun-e hamkari-e in senario |
+| Colleague | object-i ke baghi-e colleague-ha ra nemishnasad. Faghat mediator ra |
+
+Colleague mitavanad **khabar** bedahad ("man avaz shodam") va mitavanad **dastur** begirad ("khodet ra disable kon"). Har do az rah-e mediator. Felesh-e mostaghim-e colleague be colleague nist.
+
+## Sakhtar
 
 ```
-Endpoint  --Send(command)-->  ISender  -->  yek handler
+Button ---\
+TextBox ---+--> Mediator --> ghanun-e dialog --> Button / TextBox
+CheckBox --/
 ```
 
-Endpoint type-e handler ra dar project-ash reference-e mostaghim baraye call nemikhad. MediatR ba assembly scan an ra peyda mikonad (`AddMediatR` + `RegisterServicesFromAssemblies`).
+Button `TextBox` ra field nadarad. Agar farda `CheckBox` hazf shavad, `Button` compile mishavad. Faghat mediator avaz mishavad.
 
-## Gharardad-e in codebase
+## Do shekl ke bayad joda koni
+
+**Mediator-e GoF-e ghadimi (dialog, form, air-traffic).**
+Concrete mediator colleague-ha ra be esm mishnasad va method-e an-ha ra seda mizanad. Colleague-ha mediator ra mishenasand. Interaction **chand-ta'e va do-tarafe** ast. Mesal-e kitab: dialog-e UI, borj-e moraghebe-ye parvaz. Hame-ye havapeyma ba borj harf mizanand, ba ham na.
+
+**Mediator be shekl-e command bus (MediatR va shabihesh).**
+Yek payam-e dakhel-e yek object (`Command`) miravad tu `Send`. Bus **yek** handler baraye an type peyda mikonad va natije ra bar migardanad. Sender handler ra be esm nemishnasad. Handler sender ra nemishnasad. Interaction inja sade-tar az dialog-e GoF ast: yek payam, yek pasokh, na web-e widget-ha.
+
+Har do ra "mediator" seda mizanand. To mosahebe **begou kodam**. Agar begoyi MediatR va masal-e borj-e parvaz ra ghalt tarif koni, shekaf maloom mishavad. Jomle-ye dorost:
+
+> "GoF mediator interaction-e chand colleague ra markazi mikonad. Command bus yek halat-e khasi ast: sender faghat payam ra midahad, bus yek handler ra peyda mikonad, va pipeline-e vasete mitavanad ghabl az handler kar-e ezafe konad."
+
+## Ghanun-ha
+
+**1. Sender concrete-e receiver ra field nadarad.**
+Agar dashte bashad, mediator-e dorough ast. Faghat yek hop-e ezafe dari.
+
+**2. Yek `Send` yek handler.**
+Agar chand nafar bayad khabar shavand va sender montazer-e natije-ye yeki nabashad, an **observer** ast, na mediator. Ghalt-e bozorg-e mosahebe hamin yeki kardan-e `Send` va `Publish` ast.
+
+**3. Mediator-e in-process montazer-e javab mimimand.**
+Caller `await` mikonad. Natije bargasht mikhorad. An bus-e shabake nist. Timeout va retry-e Rabbit inja nist.
+
+**4. Ghanun-e business-e colleague ra be mediator naspar.**
+Mediator ghanun-e **hamkari** ra darad, na ghanun-e dakheli-e yek object. "Gheymat-e sefaresh mosbat bashad" mal-e `Order` ast. "In form submit shod, in se service ra be in tartib seda bezan" mal-e mediator ya use-case ast. Agar mediator khodesh hame-ye if-haye domain ra jam' konad, shode God Object. Pattern shekaste.
+
+**5. Payam bayad dade-ye kham bashad, na object-e zende-ye kasi digar.**
+Command field-haye sade darad. Agar command yek `DbContext` ya yek entity-e track-shode haml konad, joda'i tamoom shode.
+
+## Anva'
+
+**Mediator-e UI.** Haman GoF. Widget-ha.
+
+**Command bus / Mediator-e application.** `Send(command) → result`. Yek handler. Pipeline-e log va validation mitavanad **dor-e** an bashad. Pipeline khodesh chain of responsibility ast ke rooye mediator neshast. Do pattern. Yeki nagir.
+
+**Query bus.** Haman shekl, payam-e bi-khatar-e neveshtan. CQRS rooye hamin savar mishavad.
+
+**Event aggregator.** Chandin publisher, chandin subscriber, vasete-ye markazi. In nazdiktar be observer-e markazi ast. Ba `Send`-e yek-handler eshtebah nagir.
+
+## Mesal-e donya-ye bus
 
 ```csharp
-public interface ICommand<TResponse> : IRequest<ErrorOr<TResponse>>, IBaseCommand;
-public interface IQuery<TResponse> : IRequest<ErrorOr<TResponse>>;
+// sender faghat in ra midanad:
+Result<Guid> id = await bus.Send(new PlaceOrder(customerId, lines), ct);
 
-public interface ICommandHandler<in TCommand, TResponse>
-    : IRequestHandler<TCommand, ErrorOr<TResponse>>;
-
-public interface IQueryHandler<in TQuery, TResponse>
-    : IRequestHandler<TQuery, ErrorOr<TResponse>>;
+// yek class-e digar, to assembly-e digar:
+sealed class PlaceOrderHandler : IHandler<PlaceOrder, Guid>
+{
+    public Task<Result<Guid>> Handle(PlaceOrder cmd, CancellationToken ct) { ... }
+}
 ```
 
-`IRequest<T>` mal-e MediatR ast. `ICommand` / `IQuery` mal-e ma ast ta kas command ra be jaye query register nakonad va ta behavior-e validation faghat roye command benshinad (`IBaseCommand`).
+Sender esm-e `PlaceOrderHandler` ra nadarad. Agar handler ra avaz koni, sender compile mimanad. Bus ba type-e `PlaceOrder` handler ra peyda mikonad.
 
-Yek request **yek** handler darad. In ra ba event eshtebah nagir: event mitavanad chand handler dashte bashad (ketabche-ye Observer).
+## Farq-ha
 
-## Flow
+| | Mediator | Observer | Facade |
+|---|---|---|---|
+| Chand girande | dar bus: yek. dar GoF: chand colleague vali az rah-e yek vasete | chand, va sender montazer-e javab-e yeki nist | yek vorudi-e sade be subsystem |
+| Ki ki ra mishnasad | colleague-ha hamdigar ra na | subject list-e observer darad ya baraks | client facade ra, facade dakhel ra |
+| Natije | pasokh-e senario | elam-e "shod" | sade-sazi |
 
-```
-IEndpoint.MapEndpoint
-  → ISender.Send(new CreateXCommand(...))
-      → ExceptionHandlingPipelineBehavior
-      → RequestLoggingPipelineBehavior
-      → ValidationPipelineBehavior     // faghat agar TRequest : IBaseCommand
-      → XCommandHandler.Handle
-  → ErrorOr<T> bar migardad
-  → endpoint Match mikonad: Ok ya ProblemDetails
-```
+Facade subsystem ra **sade** mikonad. Mediator colleague-ha ra **az ham bi-khabar** mikonad. Facade dakhel mitavanad hamchenan be ham vast bashad. Mediator daghighan an vast-e dakheli ra hazf mikonad.
 
-Sabt-e zanjir inja ast:
+## Koja bezan, koja nazan
 
-`Microservices/Dejban/Common/Dejban.Common.Application/ApplicationConfiguration.cs`
+Bezan vaghti tedad-e sender va receiver ziyad ast va nemikhahi har sender har receiver ra compile-time beshnasad, ya mikhahi yek pipeline-e sabet dor-e har payam dashte bashi.
 
-Avalin `AddOpenBehavior` **biruni-tarin** halqe ast. Pas exception dor-e log, log dor-e validation, validation dor-e handler.
+Nazan vaghti:
 
-## Mediator che chizi nist
+- do class-e haman aggregate. Call-e mostaghim sade-tar va roshan-tar ast
+- mediator ra ja-ye domain gozashti va class-e mediator 2000 khat `if` shode
+- `Send` ra baraye "hame-ye kas-ha bekhahand" estefade mikoni. An publish ast
 
-- Bus-e beyn-e process nist. `Send` haman process, haman request, await mishavad.
-- Event-e RabbitMQ nist. An integration event ast va az outbox birun miravad.
-- "Hame chi ra mediator kon" nist. Call-e dakheli-e do class-e yek aggregate mediator nemikhahad.
+## Eshtebah-haye rayej
 
-## Hazine
+- Har method-e koochak ra command kardan ta "mimari" be nazar beravad. Hop-e ezafe, debug-e sakht, hich joda'i-e vaghe'i
+- Handler-e A ke `Send`-e B mizanad va B dobare A. Cycle, va transaction-e namoshakhas
+- Farz kardan bus-e in-process haman gharanti-e Rabbit ra darad
+- Do handler baraye yek command va ta'ajob az exception-e runtime. Gharardad-e `Send` yek handler ast. Compile an ra nemibinad
 
-- Call stack deraz-tar va debug yek hop sakht-tar.
-- Handler-ha ba reflection peyda mishavand. Age do handler baraye yek request sabt shavad, runtime mifahme, compile na.
-- Baraye yek CRUD-e koochak, `controller` → `service` sade-tar ast. In stack an ra pazirofte chon pipeline (validation, log, exception) va yeksan budan-e 8 module arzeshesh ra darad.
+## Mafhoom ra injoori begou
 
-## Farq ba Observer
+> "Mediator felesh-e mostaghim-e colleague-ha ra hazf mikonad. To shekl-e GoF, vasete ghanun-e hamkari-e chand widget ra darad. To shekl-e command bus, sender yek payam midahad va bus daghighan yek handler bar migardanad va natije ra pas midahad. Chand shenavande-ye bi-entezar-e javab observer ast. Mediator-e khoob God Object nemishavad. Ghanun-e dakhel-e entity sar-e jash mimimand."
 
-| | Mediator `Send` | Domain event |
-|---|---|---|
-| Chand girande | yek | chand |
-| Sender montazer-e natije | bale (`ErrorOr<T>`) | na (raise va boro) |
-| Kei | yek use-case | "ye chiz etefagh oftad" |
+---
 
-## Script-e 60 sanie
+# BAKHSH-E DOVOM — hamin mafhoom to Dejban
 
-> "Endpoint-ha `ISender.Send` mikonand va handler ra be esm nemishenasand. MediatR az assembly-e module-ha yek handler baraye har `IRequest` peyda mikonad. Ma `ICommand` va `IQuery` ra roye `IRequest` gozashtim ta write va read joda bashand va `ErrorOr` bargardad. Behavior-ha — exception, log, validation — dor-e handler micharkhand bedune inke handler an-ha ra seda bezanad. In in-process ast. Beyn-e service-ha MassTransit ast, na `Send`."
+In proje shekl-e **command bus** ra darad, na dialog-e GoF. Library MediatR ast.
+
+Gharardad-e ma rooye gharardad-e library neshast:
+
+- `ICommand<TResponse>` va `IQuery<TResponse>` az `IRequest<ErrorOr<TResponse>>` ers mibarand
+- `ICommand` alave bar an `IBaseCommand` ast ta pipeline-e validation faghat roye write benshinad
+- handler-ha `ICommandHandler` / `IQueryHandler` hastand ke khodeshan `IRequestHandler`-e MediatR-and
+
+Endpoint `ISender.Send(command)` mikonad. Type-e handler ra field nadarad. An haman ghanun-e "sender concrete ra nemishnasad" ast.
+
+Peyda kardan-e handler ba scan-e assembly-e module-ha ast (`AddMediatR` + `RegisterServicesFromAssemblies` to `ApplicationConfiguration`). Yek request, yek handler. Do handler baraye yek command khataye runtime-e MediatR ast, na chand observer.
+
+Dor-e `Send` se behavior neshast (exception, log, validation). An-ha **mediator nistand**. Chain-e rooye mediator-and. Tartib-e `AddOpenBehavior` avalin-sabt ra biruni-tarin mikonad. Joz'iat-e zanjir ketabche-ye chain ast. Inja faghat in ra negah dar: bus payam ra be yek handler mirasanad. Zanjir mitavanad ghabl az an handler payam ra rad konad (validation-e namotabar).
+
+In `Send` az process birun nemiravad. Khabar-e beyn-e module integration event va MassTransit ast. Agar to mosahebe begoyi "module-ha ba MediatR harf mizanand", ghalat ast. Module-ha ba event-e bus harf mizanand. Dakhel-e yek process, endpoint ba handler az rah-e MediatR.
+
+Handler-ha scoped-and chon context-e EF scoped ast. Mediator-e singleton ke handler-e scoped ra ghalat negah darad, haman bug-e lifetime ast. MediatR in ra per request dorost mikonad. Tozih-e mosahebe: "bus in-process ast, handler ba request zende mishavad, chon UoW-e haman request ra mikhahad."
+
+---
+
+## Script-e 90 sanie
+
+> "Do mediator darim to zehn. GoF: chand colleague faghat vasete ra mishenasand va ghanun-e hamkari anja ast. Command bus: yek payam, yek handler, yek javab. Dejban dovomi ast, ba MediatR. Endpoint `ISender.Send` mikonad va handler ra be esm nemishnasad. `ICommand` va `IQuery` rooye `IRequest` neshastand va `ErrorOr` bar migardanand. Yek command do handler nadarad. Behavior-haye log va validation dor-e bus-and, khod-e bus nistand. Beyn-e module-ha `Send` nist. Event-e bus ast."
 
 ---
 
 ## 10 soal
 
-**1. Mediator che coupling-i ra miborrad?**
-Sender digar be concrete handler, va handler digar be sender, reference-e compile-time baraye seda zadan nadarad.
+**1. Mediator-e GoF che felesh-i ra hazf mikonad?**
+Felesh-e mostaghim-e colleague be colleague. Har colleague faghat mediator ra mishnasad.
 
-**2. Chand handler baraye yek command?**
-Yek. Age do ta sabt koni MediatR exception midahad. Chand shenavande = event, na `Send`.
+**2. Ghanun-e "button ra disable kon agar text khali ast" mal-e kist?**
+Mal-e mediator-e dialog. Mal-e button nist, chon button nabayad text-box ra beshnasad.
 
-**3. `ICommand` chera mostaghim `IRequest` nist faqat?**
-Ta constraint-e validation (`IBaseCommand`) va return-e `ErrorOr` ejbari bashad, va query eshtebahan az pipeline-e command rad nashavad.
+**3. Chera God Object shodan asan ast?**
+Chon har interaction vasvase darad inja jam' shavad. Marz: hamkari inja, invariant-e object sar-e jaye khod.
 
-**4. Tartib-e behavior-ha ra che kas moshakhas mikonad?**
-Tartib-e `AddOpenBehavior`. Avali biruni-tarin ast: Exception → Logging → Validation → Handler.
+**4. `Send` va `Publish` farq?**
+`Send` yek handler va yek javab. `Publish` chand shenavande va sender montazer-e yek natije-ye business nist. Dovomi observer ast.
 
-**5. Handler scoped ast ya singleton?**
-Handler-ha ba DbContext scoped hastand. MediatR an-ha ra per request misazad. Singleton handler ke context inject konad bug ast.
+**5. Command bus che-ghadr az GoF kamtar ast?**
+Interaction-e do-tarafe-ye widget-ha ra nadarad. Faghat payam-e yek-tarafe be yek handler, ba bargasht-e natije.
 
-**6. Mitavanam az handler-e A, handler-e B ra `Send` konam?**
-Teknikally bale. Shekastan-e boundary ast: transaction, validation-e dobare, va cycle. Use-case bayad khodesh orchestrate konad ya event bezanad.
+**6. Chera payam nabayad entity-e zende haml konad?**
+Chon joda'i tamoom mishavad. Sender va handler dobare ba object-e moshtarak-e dakheli be ham vast mishavand.
 
-**7. Performance-e reflection?**
-Resolve-e handler yek bar to startup/cache ast, na har bar parse-e string. Hazine-ye asli I/O ast, na MediatR. An ra bottleneck seda nazan ta profile karde bashi.
+**7. To Dejban sender kist va chi ra nemishnasad?**
+Endpoint. Type-e concrete-e handler ra nemishnasad. Faghat command va `ISender` ra mishnasad.
 
-**8. MediatR va MassTransit farq?**
-`Send` in-process, synchronous az nazar-e caller, yek handler. MassTransit process-e digar, queue, retry, chand consumer.
+**8. Chera `ICommand` joda az `IRequest` sakhtid?**
+Ta javab hatman `ErrorOr` bashad va validation-e pipeline faghat roye write (`IBaseCommand`) benshinad.
 
-**9. Age mediator nabashad chi mishe?**
-Bayad khodet interface-e handler ra inject koni. Baraye yek service kafi ast. Arzesh-e inja pipeline-e yeknavakht va nabudan-e reference az endpoint be handler-e concrete ast.
+**9. Agar handler-e A, `Send`-e B konad chi mishavad?**
+Teknikally ejra mishavad. Az nazar-e tarahi, marz-e senario shekaste va cycle momken ast. A bayad khodesh orchestrate konad ya event bezanad.
 
-**10. Chetor debug mikoni ke handler-e ghalat ejra shode?**
-Log-e `RequestLoggingPipelineBehavior` esm-e `TRequest` ra darad. Stack, handler-e haman namespace ra neshan midahad. Test: `Send` ba yek command va assert-e `ErrorOr`.
+**10. In bus ba Rabbit yeki ast?**
+Na. In-process, hamzaman az nazar-e caller, yek handler, bedune queue. Rabbit integration event ast.

@@ -1,56 +1,63 @@
 # Design Patterns — fehrest
 
-*Ketabche-haye joda. Har file yek pattern. ACL nist.*
+*Har file yek pattern. ACL nist.*
 
 ---
 
-## Chetor bekhan
+## Gharardad-e khundan
 
-Har ketabche khodesh kafi-e. Tartib-e pa'in az zireen (data) be bala (UI) mire.
+Har ketabche **do bakhsh** darad. Tartib ra be-ham nazan.
 
-Baraye har pattern in chahar jomle ra boland begou:
+1. **Bakhsh-e avval — khode pattern.** Moshkel, ta'rif, sherkat-konande-ha, sakhtar, ghanun, anva', mesal-e sade-ye donya, farq ba pattern-haye nazdik, koja bezan va koja nazan. Inja **hich file-e Dejban** nist. Ta in bakhsh ra boland natavan goft, bakhsh-e dovom ra nakhan.
+2. **Bakhsh-e dovom — neshoon-e code.** Haman mafhoom roye code-e Dejban ya front pin mishavad: ki naghsh-e Subject ast, ki Decorator, chi az ketab kamel nist.
 
-1. **Intent** — in pattern che moshkeli ra hal mikonad.
-2. **Structure** — ki ki ra seda mizanad, va ki ra **nemi**shenasad.
-3. **Dejban** — yek file-e vaghe'i.
-4. **Tradeoff** — koja nazanash, chon interview-er hamin ra miporsad.
+Akhar-e har file: script-e mosahebe, ba'd 10 soal. So'al-haye aval mafhoom-and. So'al-haye akhar "in ra to code kojast".
 
-Strategy-e device sync (`IDeviceSyncStrategy`) faghat to ACL ast. In series an ra nadarad.
+Chahar jomle-i ke bayad **bad az bakhsh-e avval** balad bashi, ghabl az inke esm-e file biayad:
 
-## Backend (Dejban, bedune ACL)
+1. In pattern che moshkeli ra hal mikonad.
+2. Ki ki ra seda mizanad, va ki ra nemishnasad.
+3. Ba kodam pattern eshtebah gerefte mishavad va farq-e daghigh chist.
+4. Koja estefade-ash zian ast.
 
-| # | File | Pattern | Yek jomle |
-|---|---|---|---|
-| 01 | [repository](./01-repository.md) | Repository | Domain `DbContext` ra nemibinad |
-| 02 | [unit-of-work](./02-unit-of-work.md) | Unit of Work | Chand taghir, yek commit |
-| 03 | [mediator](./03-mediator.md) | Mediator | Endpoint handler ra nemishnasad |
-| 04 | [cqrs](./04-cqrs.md) | CQRS | Write va read do contract |
-| 05 | [chain-of-responsibility](./05-chain-of-responsibility.md) | Chain of Responsibility | Validation/log birun-e handler |
-| 06 | [decorator](./06-decorator.md) | Decorator | Idempotency bedune dast zadan be handler |
-| 07 | [factory](./07-factory.md) | Factory | Sakhtan-e object yek ja, ba ghanun |
-| 08 | [observer](./08-observer.md) | Observer | Entity event raise mikonad, handler-ha loosely coupled |
-| 09 | [options](./09-options.md) | Options | Config type-safe, na string-e part |
-| 10 | [template-method](./10-template-method.md) | Template Method | Skeleton to base, ghadam-e akhar to subclass |
-| 11 | [result](./11-result.md) | Result | Khataye business exception nist |
-| 12 | [outbox](./12-outbox.md) | Transactional Outbox | Save va publish yek transaction |
-| 13 | [inbox](./13-inbox.md) | Inbox | Event-e tekrar-shode yek bar process mishavad |
+Ba'd, jomle-ye panjom: "to Dejban hamin neshaste inja."
+
+Strategy-e device sync faghat to ACL ast. In series an ra nadarad.
+
+## Backend
+
+| # | File | Pattern |
+|---|---|---|
+| 01 | [repository](./01-repository.md) | Repository |
+| 02 | [unit-of-work](./02-unit-of-work.md) | Unit of Work |
+| 03 | [mediator](./03-mediator.md) | Mediator |
+| 04 | [cqrs](./04-cqrs.md) | CQRS |
+| 05 | [chain-of-responsibility](./05-chain-of-responsibility.md) | Chain of Responsibility |
+| 06 | [decorator](./06-decorator.md) | Decorator |
+| 07 | [factory](./07-factory.md) | Factory Method / Simple Factory |
+| 08 | [observer](./08-observer.md) | Observer |
+| 09 | [options](./09-options.md) | Options (ASP.NET, na GoF) |
+| 10 | [template-method](./10-template-method.md) | Template Method |
+| 11 | [result](./11-result.md) | Result / Railway |
+| 12 | [outbox](./12-outbox.md) | Transactional Outbox |
+| 13 | [inbox](./13-inbox.md) | Inbox / Idempotent Consumer |
 
 ## Frontend
 
-| # | File | Pattern | Yek jomle |
-|---|---|---|---|
-| 14 | [provider-context](./14-provider-context.md) | Provider / Context | Dependency-e moshtarak bedune prop drilling |
-| 15 | [guard](./15-guard.md) | Guard / Protection Proxy | Login joda az permission-e safhe |
-| 16 | [interceptor](./16-interceptor.md) | Chain + Single Flight | Har request token/site/refresh ra khodesh midanad |
-| 17 | [query-key-factory](./17-query-key-factory.md) | Factory (cache key) | Hoviat-e cache yek tabe' |
-| 18 | [facade](./18-facade.md) | Facade | UI axios ra nemibinad |
-| 19 | [adapter](./19-adapter.md) | Adapter | Shekl-e bigane ra be shekl-e khodi tabdil kon |
-| 20 | [zustand-observer](./20-zustand-observer.md) | Observer (store) | Subscriber-ha az taghir-e site khabar mishavand |
+| # | File | Pattern |
+|---|---|---|
+| 14 | [provider-context](./14-provider-context.md) | Provider / Context |
+| 15 | [guard](./15-guard.md) | Protection Proxy / Guard |
+| 16 | [interceptor](./16-interceptor.md) | Interceptor + Single Flight |
+| 17 | [query-key-factory](./17-query-key-factory.md) | Cache identity / Key factory |
+| 18 | [facade](./18-facade.md) | Facade |
+| 19 | [adapter](./19-adapter.md) | Adapter |
+| 20 | [zustand-observer](./20-zustand-observer.md) | Observer-e store |
 
-## In-ha ra to resume nagou (to in codebase nistan)
+## In-ha ra be onvan-e pattern-e in codebase nagou
 
-- **Strategy** — faghat ACL (device brand). In series amdan nadarad.
+- **Strategy** — faghat ACL.
 - **Abstract Factory, Visitor, Flyweight, Bridge** — nist.
-- **Specification** (Ardalis) — query-ha LINQ-e mostaghim-and.
-- **State** be shekl-e class-e joda — status bishtar field ast, na state object.
-- **Singleton dasti** — DI `AddSingleton` an ra mikonad. Class-e `lock` + `Instance` nanevis.
+- **Specification** be shekl-e kitab — query-ha LINQ-e mostaghim-and.
+- **State** be shekl-e class-e joda — status bishtar field ast.
+- **Singleton dasti** — container ba `AddSingleton` an ra midahad.

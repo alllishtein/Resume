@@ -1,124 +1,169 @@
-# 15 — Guard (Protection Proxy)
-
-*Dastresi ra jelo-ye khod-e safhe begir. Safhe nabayad khodesh "aya login ast?" ra copy konad.*
+# 15 — Guard va Protection Proxy
 
 ---
 
 ## Ye khat
 
-Guard yek wrapper ast ke **ghabl** az render-e bache tasmim migirad: neshan bedah, loading, ya redirect. Nazdik-tarin pattern-e klasik: **Protection Proxy** — object-e ja-neshin dastresi be object-e asli ra control mikonad. Bache (`children`) proxy ra nemishnasad.
+Ghabl az inke kar-e asli shoru shavad, yek ja-neshin miporsad: "in nafar haq-e didan-e in chiz ra darad?" Agar na, kar-e asli **aslan** shoru nemishavad. Kar-e asli in porsesh ra to har safhe copy nemikonad.
 
-Do guard-e mokhtalef darim. An-ha ra yeki seda nakon.
+---
 
-## 1. AuthGuard — ki hasti
+# BAKHSH-E AVAL — khode pattern
 
-`packages/ui/src/auth/guard/auth-guard.jsx`
+## Proxy chist, ghabl az guard
 
-```jsx
-export function AuthGuard({ children, signInPath }) {
-  const { authenticated, loading } = useAuthContext();
-  // loading → SplashScreen
-  // !authenticated → redirect be sign-in + returnTo
-  // else → children
-}
+GoF chahar proxy-e nazdik-be-ham darad. Sakhtar-eshan yeki ast: client interface-e asli ra mibinad, vali object-e **ja-neshin** jelo-ye object-e asli istade.
+
+| Noe | Ja-neshin chi mikonad |
+|---|---|
+| Virtual | sakhtan-e geran ra ta lahze-ye avvalin estefade aghab mindazad |
+| Remote | object-e process-e digar ra mesl-e mahali neshan midahad |
+| Smart reference | lock, count, release-e ezafe dor-e dastresi |
+| Protection | dastresi ra check mikonad va mitavanad **rad** konad |
+
+Guard-e UI protection proxy ast. "Object-e asli" derakht-e safhe ya dokme ast (`children`). Interface-e moshtarak: "in ra render kon". Proxy mitavanad be jaye an, redirect ya `null` bedahad.
+
+Farq ba decorator, chon sakhtar-e wrap yeki ast: decorator **mas'uliat-e jadid** ezafe mikonad (log, retry) va kar-e asli ra anjam midahad. Protection proxy kar-e asli ra **momken ast anjam nadahad**. Hadaf kontrol-e dastresi ast, na ezafe kardan-e feature.
+
+## Do soal-e joda — in ra yeki nakon
+
+**Authentication.** In nafar kist? Session, token, login. Javab-e na: boro login. Status-e zehni: 401.
+
+**Authorization.** In nafar-e maloom, in kar-e khas ra haq darad? Permission, role, claim, malekiat-e record. Javab-e na: 403, ya makhfi kardan-e haman dokme.
+
+Yek guard-e ghalat har do ra yek redirect-e login mikonad. User-e login-shode-ye bi-permission fekr mikonad password-ash eshtebah ast. User-e bi-session safhe-ye "dastresi nadarid" mibinad va rah-e login ra gom mikonad.
+
+Do proxy-e too-daro, do soal:
+
+```
+Auth proxy        kist?           na → login
+  Authz proxy     in safhe?       na → 403
+    children      kar-e asli
 ```
 
-So'al: session hast ya na. **Permission-e menu** inja nist.
+## Ghanun-ha
 
-`returnTo` = path-e alan, ta ba'd az login haman ja bargardi. Age khod-e sign-in bashi, loop nemisazi.
+**1. Tasmim ghabl az kar-e asli.**
+Agar safhe avval data ra fetch konad va ba'd mafhum shavad permission nist, ham leak-e etela'at dari ham flash-e UI. Proxy avval, fetch-e mahramane ba'd. (Fetch-e khod-e "aya permission daram" mojaz ast. Fetch-e "list-e personnel" ghabl az tasmim na.)
 
-## 2. PageGuard — in safhe baraye in karbar hast?
+**2. Ta dade-ye tasmim nayamade, tasmim-e manfi nade.**
+Session va claim aksaran async-and. Lahze-ye avval `claims` khali ast. Guard-e ajool 403-e dorough midahad va ba'd data miresad. Halat-e sevom lazem ast: **hanuz nemidanam** → loading. Na login, na 403.
 
-`packages/ui/src/auth/guard/component-guard.jsx`
+In se halat ra hefz kon: loading, rad, ejaze.
+
+**3. Guard-e UI amniat nist.**
+Browser dast-e karbar ast. `display:none` va `return null` ba devtools hazf mishavad. Har amal-e vaghe'i bayad server-e dobare porside shavad. Guard baraye masir-e rast-e ensan-e sadegh ast: safhe-ye eshtebah, dokme-ye bi-rabt. Server baraye marz-e vaghe'i.
+
+**4. Subject az proxy khabar nadarad.**
+Safhe `if (!user) redirect` copy nemikonad. Agar copy konad, yek safhe faramoosh mikonad va do ghanun-e dastresi dari. Proxy dor-e safhe miminad.
+
+**5. Rad-e authentication bayad jay-e bargasht ra yadash dashte bashad.**
+`returnTo` = hamun masiri ke user mikhast bebine. Ba'd az login hamanja. Bedune an, hame mirizand safhe-ye khali-e home. `returnTo` khodesh nabayad open-redirect be site-e bigane bashad. Path-e dakheli, na URL-e motlaq-e har domain.
+
+**6. Shenase-ye dastresi be URL-e kham chasbide nist.**
+Agar permission = path-e `/dashboard/duty`, taghir-e URL permission ra mishkanad, va do URL-e yek feature do ghanun mishavand. Shenase-ye sabet-e feature (`componentId`) behtar az string-e path ast. Path mitavanad avaz shavad. Ma'ni-e "in safhe-ye shift ast" na.
+
+## Sath-haye mokhtalef-e yek protection
+
+Hame-ye rad-ha yek kar nistan:
+
+| Sath | Agar na |
+|---|---|
+| Kol-e app | login |
+| Kol-e route | 403, safhe render nemishavad |
+| Yek dokme | `null` ya disabled. Baghi-e safhe mimanad |
+| Yek record | "in yek malek-e to nist" — aksaran server, chon client list-e hame-ye record-ha ra ghanun-e asli nemidanad |
+
+Dokme-ye `null` 403-e kol-e safhe nist. Agar an-ha ra yek component-e bi-tafavot koni, ya hame-ye safhe-ha 403 mishavand ya dokme-ye mamnoo' hamchenan safhe-ye khali mipichanad.
+
+## Farq-ha
+
+**Decorator.** Wrap-e haman interface, vali kar-e asli ra anjam midahad va chiz-e ezafe mikonad. Proxy-e hefazati mitavanad kar-e asli ra seda nazanad.
+
+**Chain of responsibility.** Chain chand halqe-ye ham-noghsh ke shayad "mal-e man nabashad". Guard-e auth va guard-e authz do **soal-e mokhtalef**-and ke har do bayad javab-e are bedahand. Shabihe zanjir-e too-daro ast, vali short-circuit-ash "rad-e dastresi" ast na "bere be handler-e ba'di-e ham-arz".
+
+**Middleware-e server.** Haman protection, jaye digar. UI guard jaye an ra nemigirad. Server guard jaye flash-e UI ra nemigirad. Har do lazem-and.
+
+## Eshtebah-haye rayej
+
+- 401 va 403 yek route
+- tasmim ghabl az residan-e claim
+- etemad-e amniati be `null` kardan-e dokme
+- permission-e chasbide be URL-e emrooz
+- fetch-e dade-ye asli ghabl az guard
+
+## Mafhoom ra injoori begou
+
+> "Protection proxy jelo-ye subject istade va mitavanad dastresi ra rad konad. Subject az an khabar nadarad. Auth va authz do proxy-and: na-shenakht boro login, bi-haq boro 403. Halat-e sevom loading ast ta claim nayamade 403-e dorough nadahim. UI guard amn nist. Server hamon soal ra dobare miporsad. Shenase-ye feature behtar az path-e kham ast. Dokme-ye makhfi ba safhe-ye 403 yek sath nistand."
+
+---
+
+# BAKHSH-E DOVOM — hamin mafhoom to front-e Dejban
+
+**Authentication.** `packages/ui/src/auth/guard/auth-guard.jsx` — `AuthGuard`.
+
+`authenticated` va `loading` az `useAuthContext`. Loading → `SplashScreen`, children na. Na-login → redirect be sign-in ba `returnTo` = path-e alan. Agar khod-e safhe-ye sign-in bashi, loop nemisazi. Path az config ya prop. Children faqat ba'd az ejaze.
+
+**Authorization-e safhe.** Haman file-e `component-guard.jsx` — `PageGuard`.
 
 ```jsx
-export function PageGuard({ componentId, children, forbiddenPath = '/error/403' }) {
-  const allowed = hasComponentAccess(claims, componentId);
-  // !ready → LoadingScreen
-  // componentId && !allowed → router.replace('/error/403') va null
-  // else → children
-}
-```
-
-So'al: claim-e `componentId` hast ya na. Mesal-e estefade:
-
-```jsx
-<PageGuard componentId={componentPaths.dashboard.arrangements.shifts.dutyRoster.value}>
+<PageGuard componentId={...dutyRoster...}>
   ...
 </PageGuard>
 ```
 
-Path-e page: `apps/dejban/src/app/dashboard/.../page.jsx`. Page khodesh if-e permission nadarad.
+`hasComponentAccess(claims, componentId)`. Agar `componentId` hast va mojaz nist: `router.replace('/error/403')` va `null`. Safhe-ye duty roster khodesh `if` permission nadarad. Proxy dorash ast. Path-e estefade: `apps/dejban/src/app/dashboard/.../page.jsx`.
 
-## 3. Guard — dokme va tekke, na kol-e safhe
+**Halat-e "hanuz nemidanam".** `ready` ta hame-ye in-ha dorost shavad tasmim-e manfi nemigirad:
 
-```jsx
-export function Guard({ componentId, value, children }) {
-  const { userClaimValues } = useContext(ComponentGuardContext);
-  if (!userClaimValues.has(...)) return null;
-  return children;
-}
-```
-
-403 nist. Faqat UI ra bar midarad. **In security nist.** API hanuz bayad 403 bedahad. Guard-e UI baraye nazdiki-e cheshm ast.
-
-`RouteAccessGuard` hamin tasmim ra az `navData` va path mifahmad, vaghti yek `componentId` roye khod-e page nist.
-
-## Ready che chizi ra montazer mimanad
-
-`PageGuard` ta hame-ye in-ha `ready` nashavad redirect **nemikonad**:
-
-- `loading` auth
-- `sessionRefreshing`
+- loading-e auth tamoom
+- `sessionRefreshing` tamoom
 - site: ya site entekhab shode, ya aslan site-claim nist
 
-Bedune in, refresh-e safhe yek 403-e dorough midahad chon claims hanuz nayamade. In bug-e rayej-e guard ast. To mosahebe begou.
+Ta an vaght `LoadingScreen`. In haman ghanun-e "403-e ajool na" ast. Permission-e ba'zi safhe-ha be site-e entekhabi baste ast. Tasmim-e ghabl az site dorough ast.
 
-## Farq-e se taye
+**Sath-e dokme.** `Guard` haman context-e claim ra mikhanad. Agar claim nist `null`. 403-e kol-e route nist. Baghi-e safhe mimanad. Amniat-e an server ast.
 
-```
-AuthGuard          session?     na → login
-  PageGuard        componentId? na → 403
-    Guard          dokme?       na → null (hamchenan API ra lock kon)
-      children
-```
+**Sath-e route bedune componentId-e dasti.** `RouteAccessGuard` az `navData` va path, shenase-ye lazem ra dar miavarad. Haman protection, vorudi-ash menu ast na prop-e safhe.
 
-Proxy-e klassik haman interface-e object ra darad. Inja interface = `children`. Proxy mitavanad object-e asli ra **aslan** render nakonad.
+`componentId` shenase-ye sabet-e feature ast (mesl-e duty roster), na string-e URL. Chand page mitavanand yek id dashte bashand.
 
-## Script-e 60 sanie
+---
 
-> "Se sath darim. `AuthGuard` faghat authentication ast va be sign-in ba `returnTo` mifrestad. `PageGuard` authorization-e safhe ast: `componentId` ra ba claims check mikonad va 403 midahad, vali ta loading va refresh-e session tamoom nashavad redirect nemikonad. `Guard` dokme ra `null` mikonad va an ra security hesab nemikonam; backend haman claim ra dobare check mikonad. Page-e duty roster khodesh if neminevisad, `PageGuard` dorash ast."
+## Script-e 90 sanie
+
+> "Protection proxy interface-e subject ra darad vali mitavanad subject ra seda nazanad. Farq-ash ba decorator hamin rad kardan ast. Auth va authz ra joda mikonam: 401 login, 403 forbidden. Se halat: loading, rad, ejaze. Ta claim nayamade 403 nemidaham. UI jaye server nist. To Dejban AuthGuard returnTo misazad, PageGuard componentId ra ba claim check mikonad va 403 midahad, va ta loading va refresh-e session va site ready nashavad redirect nemikonad. Guard-e dokme faghat null mikonad. Page khodesh if-e permission nadarad."
 
 ---
 
 ## 10 soal
 
-**1. Guard va Proxy?**
-Protection Proxy dastresi be subject ra control mikonad. `children` subject ast. Guard haman interface-e "in derakht ra neshan bedeh" ra darad va gahi an ra block mikonad.
+**1. Protection proxy va decorator?**
+Har do wrap-e haman interface-and. Proxy mitavanad kar-e asli ra anjam nadahad. Decorator kar-e asli ra anjam midahad va chizi ezafe mikonad.
 
-**2. Chera Auth va Page joda-and?**
-401 va 403 yek chiz nistand. User-e login-nashode bayad login bebine. User-e login-shode-ye bi-permission bayad 403 bebine, na form-e password.
+**2. 401 va 403 farq?**
+401: kist, nemidanim ya login nist. 403: midanim kist, in kar ra haq nadarad.
 
-**3. UI guard kafi ast?**
-Na. Har API bayad claim ra check konad. `Guard` ke `null` bar migardanad ba devtools dor mikhorad.
+**3. Halat-e sevom chist?**
+Loading. Dade-ye tasmim hanuz nayamade. Tasmim-e manfi-e zud dorough ast.
 
-**4. Chera `LoadingScreen` ghabl az tasmim?**
-Claims va site async hastand. Tasmim-e zud = flash-e 403 ya flash-e data-ye mamnoo'.
+**4. Chera UI guard amn nist?**
+Client dast-e karbar ast. Hide kardan fetch-e API ra jelow nemigirad.
 
-**5. `returnTo` chera query ast?**
-Ta ba'd az login haman path baz shavad. Bayad path ra validate koni ta open-redirect be site-e bigane nashavad. Inja path-e dakheli-e `window.location.pathname` ast.
+**5. `returnTo` che khatari darad?**
+Agar URL-e motlaq-e bigane ra bepaziri, open redirect. Path-e dakheli.
 
-**6. `componentId` chist?**
-Shenase-ye sabet-e feature (mesl-e duty roster), na URL-e kham. Chand page mitavanand yek id dashte bashand. URL avaz mishavad, permission na.
+**6. Chera permission rooye path-e kham shekanande ast?**
+Taghir-e URL ghanun ra avaz mikonad va do route-e yek feature do ghanun mishavand.
 
-**7. `Guard` va `PageGuard` farq-e raftar?**
-Page kol-e route ra be 403 mibarad. `Guard` faghat an bache ra hazf mikonad ta baghi-e safhe bemanad.
+**7. Dokme-ye null va safhe-ye 403?**
+Avval baghi-e safhe ra negah midarad. Dovom kol-e route ra mibandad. Yek sath nistan.
 
-**8. Site in guard che mikonad?**
-Permission mitavanad be site-e entekhab-shode baste bashad. Ta site amade nashavad, `allowed` ma'ni-dar nist.
+**8. To Dejban `PageGuard` che vaght redirect mikonad?**
+Ba'd az `ready`: na loading, na sessionRefreshing, va site ya entekhab shode ya aslan lazem nist. Va `componentId` mojaz nist.
 
-**9. Test?**
-Claims-e bedune id → expect-e replace-e 403 va nabudan-e children. Loading=true → 403 **hanuz** seda nashode. AuthGuard: authenticated=false → URL-e sign-in ba `returnTo`.
+**9. Safhe-ye duty roster khodesh check mikonad?**
+Na. `PageGuard` dor-e children ast. Subject az proxy khabar-e joda nadarad.
 
-**10. HOC ya wrapper?**
-Ma component-e wrapper (`<PageGuard>`) darim, na `withPageGuard(Page)`. Wrapper to JSX sade-tar tarkib mishavad va type-esh moshkel-e HOC ra nadarad. Har do haman pattern-and.
+**10. `RouteAccessGuard` che farqi darad?**
+Shenase ra az nav va path dar miavarad, na az prop-e dasti-e har page. Haman soal-e authorization.
