@@ -1,180 +1,119 @@
 # 04 — CQRS
 
----
-
-## Ye khat
-
-Kari ke **system ra avaz mikonad** va kari ke **faghat chizi ra mikhanad** yek model nistand. Joda-shaan mikoni ta har kodam shekl-e khod ra dashte bashad.
-
----
-
-# BAKHSH-E AVAL — khode pattern
+Kari ke system ra avaz mikonad va kari ke faghat chizi ra mikhanad ye shekl nistan. Joda-shan mikoni ta har kodam shekl-e khodesh ra dashte bashad.
 
 ## Moshkel
 
-Yek model-e `Order` hame-chiz ra mikhahad bashad:
+Ye class-e `Order` nemitavanad hamzaman hame-ye in-ha bashad:
 
-- ghanun-e "mitavan khat ezafe kard ta vaghti pardakht nashode"
+- ghanun-e "ta pardakht nashode khat ezafe kon"
 - form-e sabt
-- grid-e 20 filter ba jam'e forush-e mah
-- namayesh-e esm-e moshtari ke aslan field-e aggregate nist
+- jadval-e bist filter ba jam'-e forush-e mah
+- esm-e moshtari, ke aslan field-e khode sefaresh nist
 
-Write mikhahad object-e koochak, invariant, va kam field. Read mikhahad flat, sari', va por az field-haye namayeshi. Yek class har do ra bad anjam midahad: ya ghanun-e write shekaste mishavad ta grid rahat shavad, ya grid `Include`-e sangin mikeshad ta aggregate "kam" bemanad.
+Neveshtan object-e koochak va motabar mikhahad. Khandan object-e takht va sari' va por az field-e namayeshi mikhahad. Ye class har do ra bad anjam midahad.
 
-## Ta'rif
+## Ide
 
-**CQS** (Command Query Separation, Bertrand Meyer) ghanun-e **method** ast:
+Aval ye ghanun-e sade-tar hast be esm-e CQS: methodi ke mikhanad, system ra avaz nakonad. Methodi ke avaz mikonad, baraye so'al-e ba'di dade-ye gonde bargardanad.
 
-- command system ra avaz mikonad va chizi bar nemigardanad ke az an baraye so'al-e ba'd estefade koni (ya faghat yek id)
-- query javab midahad va system ra avaz nemikonad
+CQRS hamin harf ra az method bala mibarad ta model. Model-e neveshtan joda az model-e khandan. Shayad handler joda, DTO joda, hatta database joda.
 
-**CQRS** (Command Query Responsibility Segregation, Greg Young, va ba'd Fowler an ra moarefi kard) haman ghanun ra az method **bala** mibarad ta model:
+Se sath darad. Sath-e balatar yani behtar nist. Yani geran-tar.
 
-- model-e neveshtan joda az model-e khandan
-- shayad handler joda, DTO joda, hatta database joda
+**Sath-e 1.** Do class va do handler. `CreateOrder` va `GetOrderList`. Har do haman jadval ra mibinand. Neveshtan ba mowjudiat ast. Khandan ba ye DTO-ye takht. Database yeki ast. Hamin ke commit shod, khandan-e ba'di haman dade ra mibinad.
 
-CQS hamishe mitavanad bedune CQRS bashad (method-ha joda, model yeki). CQRS bedune CQS shekaste ast: agar "query" ham update mikonad, joda kardan-e model dorough ast.
+**Sath-e 2.** Hanuz ye database, vali shekl-e khandan jodast. Masalan ye view ya ye select ba join. Mowjudiat-e neveshtan an join ra nadarad.
 
-## Se sath — in-ha ra roye ham nari
+**Sath-e 3.** Database-ye neveshtan joda, ye copy baraye khandan. Jadval az copy mikhanad. Inja takhir hast: bad az sabt, ta copy beresad, list momken ast kohne bashad.
 
-**Sath-e 1. Joda'i-e code.**
-`CreateOrderCommand` va `GetOrderListQuery` do class, do handler. Har do haman jadval ra mikhanand. Model-e write aggregate ast. Model-e read yek DTO-ye flat. Database yeki ast. Consistency ghavi ast: hamun ke commit shod, query-e ba'd haman data ra mibinad.
+Hich-kodam "CQRS-e kamel-tar" be ma'ni-ye behtar nist. Sath-e 3 ra vaghti barmidari ke sath-e 1 kam biavarad: gozaresh-e sangin, ya khandan kheyli sholugh-tar az neveshtan.
 
-**Sath-e 2. Joda'i-e model-e dakheli.**
-Write aggregate-e normalize. Read view ya query-e denormal ke haman database ast (`SELECT` ba join, ya yek view). Hanuz yek store.
+Chand chiz in pattern nist.
 
-**Sath-e 3. Joda'i-e store.**
-Write database-e khod ra darad. Yek projection an ra be store-e read copy mikonad. Grid az store-e dovom mikhanad. Inja **eventual consistency** pish miayad: ba'd az command, ta projection beresad, read mitavanad ghadimi bashad.
+**Event sourcing nist.** Event sourcing yani tarikh-e event-ha ra zakhire koni, na vaziat-e alan. Kheyli-ha in do ra ba ham miguyand. Ma event-e domain darim. Tarikh-e kamel-e event be-jaye radif-e jadval nadarim. Agar beporsand "CQRS dari?" va to event sourcing nadari, begou nadari.
 
-Hich sathi "CQRS-e kamel-tar" be ma'naye behtar nist. Sath-e 3 gheymat darad. An ra vaghti bar midari ke sath-e 1 khafash konad (scale-e read, shekl-e gozaresh, tim-e joda).
+**Do class-e khali ham kafi nist.** Agar command faghat field-ha ra copy konad va query haman mowjudiat ra bargardanad, esm-e CQRS ra dari va joda'i-ye model ra na.
 
-## Chizi ke CQRS nist
+**Do microservice-e ejbari nist.** Joda'i-ye code dakhel-e ye process ham CQRS ast.
 
-**Event sourcing.**
-Zakhire kardan-e **tarikh-e event** bejaye zakhire-ye vaziat-e alan. CQRS aksaran ba an harf zade mishavad chon Young har do ra ba ham zad. Vali CQRS bedune event sourcing tamam-e donya-ye amali ast. Event sourcing bedune joda'i-e read ham momken ast, faghat dardnak. Agar porsidand "CQRS dari?" va to event sourcing nadari, begou nadari. Dorogh-e "bale ma event source mikonim" rizume ra mishkanad.
+Ghanun-ha:
 
-**CRUD-e do class-e khali.**
-`CreateXCommand` ke faghat field-ha ra copy mikonad roye entity, va `GetXQuery` ke haman entity ra bar migardanad. Esm-e CQRS ra dari, joda'i-e model ra na. Model hanuz yeki ast.
+Khandan vaziat-e business ra avaz nemikonad. "In bazdid ra beshmar" farman ast, na kar-e makhfi dakhel-e `GetById`. Log-e zir-sakht eshkali nadarad.
 
-**Do microservice-e ejbari.**
-CQRS dakhel-e yek process ham ma'ni darad. Joda'i-e deploy joz'-e ta'rif nist.
+Farman mitavanad shenase bargardanad. Nabayad kol-e shekl-e safhe ra bargardanad. Vagarna model-e neveshtan dobare shekl-e UI mishavad.
 
-## Ghanun-ha
+Field-e jadid yani do ja taghir: farman va model-e khandan. In hazine-ye sabet-e pattern ast. Agar nagu'i, pattern ra balad nisti.
 
-**1. Query side-effect-e business nadarad.**
-Nabayad vaziat ra avaz konad. Log va metric side-effect-e infra hastand. "Didan-e safhe ra be onvan-e visit hesab kon" side-effect-e business ast va bayad command bashad, na ghalat-e `GetById`.
+To sath-e 3, safhe bayad takhir-e copy ra tahammol konad. Ya az javab-e khode farman UI ra taze kon, ya sath-e 3 ra baraye an safhe entekhab nakon.
 
-**2. Command model-e read ra bar nagardan.**
-Javab-e command mitavanad id ya vaziat-e natije bashad. Javab-e command **nabayad** graph-e kamel-e UI bashad. Vagarna model-e write dobare shekl-e safhe ra barmidarad va joda'i tamoom mishavad.
-
-**3. Write invariant ra hefz mikonad. Read sari' budan ra.**
-Index-e grid, denormal, hatta dade-ye tekrar, to read mojaz ast. Haman tekrar to aggregate-e write kasif ast. Do ghanun-e shekl dari. An ra yek class nakon.
-
-**4. Sath-e 3 ra bedune zaban-e consistency be UI nadeh.**
-Agar projection 2 sanie aghab bashad, client ke haman lahze list ra mikhanad bayad bedanad chera radif-e jadid nist. Ya az javab-e khod-e command UI ra be-rooz kon, ya query ra ba'd az lag bezan, ya sath-e 3 ra baraye an safhe entekhab nakon.
-
-**5. Do model ya'ni do jaye taghir.**
-Field-e jadid shayad command, aggregate, event, projection, va DTO ra begirad. In hazine-ye sabet-e pattern ast. Agar an ra nagoyi, pattern ra balad nisti.
-
-## Mesal-e donya
+## Mesal-e koochik
 
 ```csharp
-// write: ghanun
 public readonly record struct PlaceOrder(Guid CustomerId, IReadOnlyList<Line> Lines);
 
-// read: shekl-e grid, na aggregate
 public readonly record struct OrderListItem(Guid Id, string CustomerName, decimal Total, string Status);
 ```
 
-Handler-e avval `Order.Place` seda mizanad va commit mikonad. Handler-e dovom `SELECT` mizanad va `OrderListItem` por mikonad. `Order` class field-e `CustomerName` nadarad. An mal-e jadval-e digar ast va faghat to read join mishavad.
+Handler-e avval `Order.Place` ra seda mizanad va commit mikonad. Handler-e dovom ye select mizanad va `OrderListItem` por mikonad. Class-e `Order` field-e `CustomerName` nadarad. Esm-e moshtari mal-e jadval-e digari ast va faghat to khandan join mishavad.
 
-## Farq-ha
+## Koja estefade nakon
 
-**Repository.** Repository aggregate-e write ra collection mikonad. CQRS migoyad model-e read aslan an aggregate nist. Repository-e write va query-e read kenar-e ham mimanand.
+Agar form va jadval haman shekl-and, do poshte hazine-ye khali ast. Sath-e 3 ra baraye har mowjudiat nasaz. Takhir-e copy bug-hayi misazad ke sath-e 1 aslan nadasht.
 
-**Event sourcing.** Tarikh-e taghirat manba'-e haghighat ast. CQRS faghat joda'i-e masir-e khandan va neveshtan ast. Manba'-e haghighat mitavanad hamchenan radif-e jadval bashad.
+## Hala dar Dejban
 
-**CRUD.** Yek model, chahar amal. CQRS vaghti chahar amal digar yek shekl nistand.
-
-## Koja bezan, koja nazan
-
-Bezan vaghti ghanun-e write va shekl-e read har do jaddi hastand, ya read chand bar sangin-tar az write ast.
-
-Nazan vaghti form va jadval haman shekl-and. Do stack hazine-ye khali ast. Sath-e 3 ra baraye "har entity" nasaz. Lag-e projection bug-hayi misazad ke sath-e 1 aslan nadasht.
-
-## Eshtebah-haye rayej
-
-- Goftan-e CQRS va ma'ni kardan-e event sourcing
-- Query-i ke `Save` mizanad
-- Command-i ke 15 include baraye por kardan-e yek grid mikeshad
-- Do database bedune tarh-e lag
-- Sync negah dashtan-e do store ba dual write. An shekast-e consistency ast. Projection bayad az vaghe'iat-e commit-shode (event ya outbox) besazad, na az do `Save` mostaghel
-
-## Mafhoom ra injoori begou
-
-> "CQS ghanun-e method ast: query avaz nemikonad. CQRS haman ra ta model joda mikonad. Sath-e avval faghat do handler va do DTO ast va haman database. Sath-e store-e joda eventual consistent ast va hazine darad. Event sourcing lazem-e CQRS nist. Command graph-e UI bar nemigardanad. Query status ra update nemikonad."
-
----
-
-# BAKHSH-E DOVOM — hamin mafhoom to Dejban
-
-Sath-e ghalib-e module-ha **sath-e 1** ast.
+Sath-e ghaleb-e module-ha sath-e 1 ast.
 
 ```csharp
 public interface ICommand<TResponse> : IRequest<ErrorOr<TResponse>>, IBaseCommand;
 public interface IQuery<TResponse> : IRequest<ErrorOr<TResponse>>;
 ```
 
-Do contract. Har do az MediatR miravand va har do `ErrorOr` bar migardanand. Joda'i in nist ke query exception-e joda dashte bashad. Joda'i in ast ke:
+Do gharardad. Har do az MediatR miravand va har do `ErrorOr` barmigardanand. Joda'i in ast ke:
 
-- command `IBaseCommand` ast va validation-e pipeline **faghat** roye an neshast. Query az an constraint rad nemishavad
-- handler-e command aggregate load mikonad, method-e entity, `SaveChanges`
-- handler-e query projection / `IQueryable` / DTO. Aggregate-e ghabel-e neveshtan bar nemigardanad
+- validation-e pipeline faghat ru command ast, chon `IBaseCommand` darad. Query in gheyd ra nadarad.
+- handler-e command mowjudiat ra bar mikonad, method-e mowjudiat, `SaveChanges`.
+- handler-e query ye DTO-ye takht barmigardanad, na mowjudiat-e ghabel-e neveshtan.
 
-Database-e write va read baraye aksar-e module-ha yeki ast. Consistency ghavi ast. In ra "CQRS-e kamel ba do store" seda nakon.
+Database-ye khandan va neveshtan baraye bishtar-e module-ha yeki ast. In ra "CQRS ba do database" seda nakon.
 
-Sath-e 3 ja'i ast ke reporting read-model darad: dade-ye neveshte-shode yek bar-e digar be shekl-e gozaresh zakhire mishavad. An eventual ast. Safhe-hayi ke az an mikhanand nabayad farz konand haman millisecond-e command be-rooz-and. Joz'iat-e an pipeline to `day-64` ast. In ketabche faghat naghsh-ash ra moshakhas mikonad: projection-e read, na aggregate-e write.
+Sath-e 3 jayi ast ke gozaresh-giri model-e khandan-e joda darad. Dade-ye neveshte-shode ye bar-e digar be shekl-e gozaresh zakhire mishavad. An yeki ba takhir taze mishavad. Joz'iat-ash to `day-64` ast.
 
-Mapster (abzar-e map) pattern nist. Vasat-e sath-e 1 neshaste ta shekl-e entity be shekl-e DTO tabdil shavad. Agar map-e 1:1-e bi-taghir dashte bashi, joda'i-e model-et hanuz kaghazi ast.
+Mapster abzar-e copy-e field ast, khode in pattern nist. Agar naghshe-ye yek-be-yek va bi-taghir bashad, joda'i-ye model hanuz ru kaghaz ast.
 
-`ErrorOr` roye query yani "not found" javab-e khandan ast, na side-effect. An CQS ra nemishkanad.
+## Agar beporsand, in tor begou
 
----
+> CQS miguyad method-e khandan avaz nakonad. CQRS miguyad model-e khandan va neveshtan yeki nabashand. Se sath darad: do handler, do shekl dakhel-e ye database, ya do zakhire ba takhir. Event sourcing nist. Dejban sath-e avval ra hame-ja darad: command mowjudiat ra minevisad, query ye DTO-ye takht. Validation faghat ru command ast. Gozaresh-giri jayi ast ke model-e khandan-e joda darim.
 
-## Script-e 90 sanie
+## Dah so'al
 
-> "CQS migoyad method-e khandan avaz nakonad. CQRS migoyad model-e khandan va neveshtan aslan yeki nabashand. Se sath darad: do handler, do shekl dakhel-e yek database, ya do store ba lag. Event sourcing nist. Dejban sath-e avval ra hameja darad: `ICommand` va `IQuery`, command aggregate ra minevisad, query DTO-ye flat. Validation-e pipeline faghat command ast. Do database-ye ejbari nadarim. Reporting ja'i ast ke read-model-e joda darim va an eventual ast. Command-e man list-e grid bar nemigardanad."
+**1. Farq-e CQS va CQRS chi ast?**
+CQS joda'i-ye method ast. CQRS joda'i-ye model ast, va shayad joda'i-ye zakhire. Dovomi avvali ra farz mikonad.
 
----
+**2. Chera ye class-e Order ham baraye ghanun ham baraye jadval bad ast?**
+Shekl-e ghanun va shekl-e namayesh yeki nist.
 
-## 10 soal
+**3. Sath-e 1 va sath-e 3 az nazar-e tazegi-ye dade che farqi darand?**
+Sath-e 1 ba commit, khandan-e ba'di dorost ast. Sath-e 3 ta copy beresad momken ast aghab bashad.
 
-**1. CQS va CQRS farq?**
-CQS joda'i-e method ast. CQRS joda'i-e model (va shayad store) ast. Dovomi avvali ra farz mikonad.
+**4. Event sourcing kojay-e in ta'rif ast?**
+Hich-ja. Manba'-e haghighat mitavanad haman radif-e alan bashad.
 
-**2. Chera yek `Order` baraye ham ghanun ham grid bad ast?**
-Shekl-e invariant va shekl-e namayesh yeki nist. Yek class ya ghanun ra nasaz mikonad ya query ra sangin.
+**5. Query mojaz ast che bargardanad?**
+DTO va list va "peyda nashod". Nabayad radif ra update konad.
 
-**3. Sath-e 1 va sath-e 3 farq-e consistency?**
-Sath-e 1 ba commit, khandan-e ba'd rast ast. Sath-e 3 ta projection beresad mitavanad aghab bashad.
+**6. Command mojaz ast shenase bargardanad?**
+Bale. Vaghti kol-e graph-e safhe ra barmigardani, joda'i mishkanad.
 
-**4. Event sourcing kojaye ta'rif ast?**
-Hich ja. Manba'-e haghighat mitavanad radif-e alan bashad. Event sourcing tarikh-e event ra manba' mikonad. Pattern-e jodast.
+**7. Hazine-ye sabet chi ast?**
+Har field-e jadid do ja ra avaz mikonad. To sath-e 3 bayad takhir ra ham tarahi koni.
 
-**5. Query mitavanad chi bar gardanad ke hanuz query bemanad?**
-DTO, list, flag-e vojud. Nabayad row ra update konad. "Visit ra beshmar" command ast.
+**8. Sath-e ghaleb-e Dejban kodam ast?**
+Sath-e 1. Do interface, ye database-ye module. Validation faghat command ast.
 
-**6. Command mitavanad id bar gardanad?**
-Bale. Shekastan-e joda'i nist. Shekastan vaghti graph-e kamel-e safhe ra bar migardani va model-e write shekl-e UI mishavad.
+**9. Sath-e 3 koja dide mishavad?**
+Model-e khandan-e gozaresh-giri. Mowjudiat nist. Bad az neveshtan, dirtar az commit-e asli taze mishavad.
 
-**7. Hazine-ye sabet chist?**
-Do ja baraye har field-e jadid, va to sath-e 3 tarh-e lag.
-
-**8. To Dejban sath-e ghalib kodam ast?**
-Sath-e 1. Do interface, yek database-e module. `ICommand` pipeline-e validation darad. `IQuery` na.
-
-**9. Koja sath-e 3 dide mishavad?**
-Read-model-e reporting. An aggregate nist. Ba'd az neveshtan, projection aghab-tar az commit-e asli mibine.
-
-**10. Che shekasti ra to code-e review rad mikoni?**
-Query-i ke `SaveChanges` mizanad, ya command-i ke baraye yek grid aggregate ra ba hame-ye relation load mikonad.
+**10. Che chizi ra to review rad mikoni?**
+Query ke `SaveChanges` bezanad, ya command ke baraye ye jadval mowjudiat ra ba hame-ye rabete-ha bar konad.

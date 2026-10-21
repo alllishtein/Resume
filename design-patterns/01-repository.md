@@ -1,107 +1,38 @@
 # 01 — Repository
 
----
+Ye anbar ra tasavor kon. Kasi ke sefaresh sabt mikonad nabayad bedanad kala dar ghafase-ye chand ast. Faghat miguyad: "sefaresh ba in shomare ra biavar" va "in sefaresh ra bezar dakhel-e anbar". Inke posht-e anbar jadval-e SQL ast ya file, be u marbut nist.
 
-## Ye khat
+Repository hamin gharardad ast. Code-e business ba ye list az object-ha harf mizanad. Zakhire-ye vaghe'i posht-e haman list mimanad.
 
-Repository ja-neshin-e yek **majmue** ast. Client fekr mikonad object-ha to yek list-e hafeze neshaste-and: yeki ra ba shenase peyda kon, yeki ra ezafe kon, yeki ra hazf kon. Inke an list vaghe'an jadval-e SQL ast, file ast, ya API-e kasi digar, posht-e hamin ja-neshin mimanad.
+## Moshkel
 
----
+Sabt-e personnel do jur kar darad.
 
-# BAKHSH-E AVAL — khode pattern
+Yeki ghanun ast: agar hazf shode, dobare hazf nashavad. Agar code-e melli tekrar ast, nasaz.
 
-## Moshkeli ke hal mikonad
+Yeki zakhire ast: kodam jadval, kodam join, kodam filter-e site.
 
-Code-e business yek kar darad: ghanun. "Agar personnel hazf shode, dobare hazf nashavad." "Agar code-e melli tekrar ast, nasaz."
+Agar har do to ye method bashand, har taghir-e jadval ghanun ra ham mikeshad. Test-e ghanun ham bedune database emkan nadarad.
 
-Code-e data yek kar-e digar darad: kojast, che shekli roye disk darad, che join-i mikhahad, che lock-i.
+Repository in do ra joda mikonad. Handler miguyad "personnel ba in shenase ra bede". Class-e posht-e interface tasmim migirad in jomle kodam `SELECT` ast.
 
-Agar in do ta to yek method bashand, har taghir-e jadval ghanun ra mikeshad, va har taghir-e ghanun SQL ra. Test-e ghanun ham bedune database mojaz nist.
+## Ide
 
-Repository in do jahan ra ba yek **gharardad-e majmu'e** joda mikonad. Samt-e business migoyad "personnel-e ba in id ra behem bedeh". Samt-e data tasmim migirad an jomle yani kodam `SELECT`.
+Code-e business se kar ba ye mowjudiat mikonad: peydash konad, ezafe konad, hazf konad. Mesl-e ye list to hafeze.
 
-## Ta'rif-e daghigh
+Chand ghanun-e sade in pattern ra pattern mikonad.
 
-Az ketab-e Evans (DDD): repository baraye har aggregate-e root yek majmu'e-ye mafhumi ast. Az an aggregate ra **misazi**, **peyda mikoni**, va **hazf mikoni**, ba zaban-e domain, na ba zaban-e query.
+**Zaban-e method, zaban-e domain ast.** `GetById` va `Add` dorost ast. `ExecuteSql` yani digar list nisti, shode-i ejrakonande-ye query.
 
-Az Fowler (Patterns of Enterprise Application Architecture): repository vasete-ye beyn-e domain va data-mapping ast ta shabihe collection bashad.
+**Baraye rishe-ye mowjudiat ye makhzan dari, na baraye har jadval.** Sanad-e personnel makhzan-e joda nadarad. Az khode personnel bargozari mishavad. Agar bache ra joda begiri, ghanun-e "personnel va sanad-ha-yash ba ham motabar-and" mishkanad.
 
-Do ta'rif yek chiz ra migoyand, ba yek stress-e mokhtalef:
+**Ezafe kardan yani ozv-e list shod, na inke ru disk raft.** Zakhire-ye naha'i kar-e Repository nist. Kar-e Unit of Work ast. Agar `Add` haman lahze commit konad, digar nemitavani do taghir ra ba ham yekja benevisi.
 
-- Evans stress mizad **marz-e aggregate**. Repository baraye har jadval nist. Baraye root ast. Bach-e-ha (document-e personnel, item-e sefaresh) az rah-e root load mishavand, na az repository-e jodagane-ye khod.
-- Fowler stress mizad **shabihe collection**. `Add` va `Get` bayad mesl-e list bashand. Client transaction va SQL ra nabinad.
+**Makhzan ghanun-e business ejra nemikonad.** "Hazf yani event ham sakhte shavad" kar-e khode mowjudiat ast. "Hazf-shode-ha ra to list niavar" mitavanad kar-e makhzan bashad, chon ta'rif-e khode list ast: list-e personnel-haye zende.
 
-Agar har do ra dashte bashi, repository-e dorost dari. Agar faghat `GetAll` roye har jadval dashte bashi, esm-e repository ra roye DAO gozashte-i.
+Ye makhzan-e omumi `IRepository<T>` baraye hame-ye mowjudiat-ha vasvase-konande ast, chon code kam mishavad. Zud mishkanad. Method-haye vaghe'i ye shekl nistan. `GetWithDocuments` mal-e personnel ast, mal-e har `T` nist. Aksaran ham `IQueryable` az in interface nashat mikonad va masraf-konande dobare be ORM michasbad.
 
-## Sherkat-konande-ha
-
-| Naghsh | Mani | Chi ra midanad | Chi ra nemidanad |
-|---|---|---|---|
-| Client | use-case, handler, service | "personnel ra mikhaham" | SQL, schema, ORM |
-| Repository (gharardad) | interface-e majmu'e | amal-haye zaban-e domain | joziat-e zakhire |
-| Implementation | class-e posht-e interface | ORM, query, mapping | ghanun-e business |
-| Aggregate | object-e domain | ghanun-e khod | inke chetor load shode |
-
-Client implementation ra seda nemizanad. Implementation aggregate ra "por" mikonad va pas midahad. Ba'd az an, ghanun dakhel-e aggregate ejra mishavad, na dakhel-e repository.
-
-## Sakhtar
-
-```
-Client
-  |  Get(id) / Add(entity) / Remove(entity)
-  v
-IRepository          <-- gharardad, zaban-e domain
-  |
-  v
-RepositoryImpl       <-- tanha ja-i ke data ra midanad
-  |
-  v
-Jadval / file / API
-```
-
-Client felesh-e payin ra nemibinad. Faghat felesh-e aval ra mibinad.
-
-## Ghanun-hayi ke pattern ra pattern mikonand
-
-**1. Zaban-e method esm-e domain ast.**
-`GetById`, `Add`, `FindUnpaidByCustomer`. Na `ExecuteSql`, na `Query("select ...")`. Agar method-e repository jomle-ye SQL-e parameter-dar mipazirad, digar ja-neshin-e majmu'e nist. Shode query-runner.
-
-**2. Yek repository baraye yek aggregate root.**
-Sefaresh repository darad. Khat-e sefaresh repository-e joda nadarad. Khat ra az dakhel-e sefaresh migiri. Dalil: invariant-e "jam'e khat-ha ba gheymat yeki bashad" faghat vaghti yek object-e kamel dast-e to ast ghabel-e hefz ast. Agar khat ra joda load koni, invariant ra dor zade-i.
-
-**3. Add zakhire-ye nahayi nist.**
-To yek list-e hafeze, `list.Add(x)` yani "alan to majmu'e ast", na "alan roye disk raft". Commit kar-e repository nist. Kar-e Unit of Work ast (ketabche-ye ba'd). Repository-i ke vasat-e `Add` khodesh `COMMIT` mizanad, client ra az jam' kardan-e chand taghir-e atomik mahrum mikonad.
-
-**4. Implementation ghabel-e avaz ast, gharardad na.**
-Emruz Postgres, farda test-e fake. Client taghir nakonad. In faghat vaghti arzeshesh darad ke gharardad **kuchak va sabet** bashad. Agar interface hame-ye tavanayi-haye ORM ra birun bedahad (`Include`, `AsNoTracking`, raw SQL), avaz kardan-e implementation dorough ast: client aslan be haman ORM vast shode.
-
-**5. Repository ghanun-e business ejra nemikonad.**
-"Hazf yani event ham besaz" kar-e entity ast. "Hazf-shode-ha ra to list nayavar" mitavanad kar-e repository bashad, chon an **tarif-e majmu'e** ast: majmu'e-ye personnel-haye zende. Farq-e in do ra yad begir. Avvali invariant-e yek object. Dovomi tarif-e chizi ke to majmu'e hast.
-
-## Anva'
-
-**Collection-oriented.**
-`Add`, `Remove`, `Get`. Mesl-e `HashSet`. ORM taghir ra track mikonad. In haman shekli ast ke Evans goft.
-
-**Persistence-oriented.**
-`Save`, `Update`, `Insert` joda. Kamtar shabihe collection, bishtar shabihe DAO. Vaghti ORM-e change-tracker nadari (Dapper-e khali) in shekl-e rast ast, chon kasi joz to nemidanad INSERT ast ya UPDATE.
-
-**Generic `IRepository<T>`.**
-Yek interface baraye hame-ye entity-ha: `Get`, `Add`, `Delete`, `List`. Vasvas-e konande ast chon kam code dari. Shekast-e ma'mool:
-
-- method-haye vaghe'i yek shape nistand (`GetWithDocuments` mal-e personnel ast, mal-e `T` nist)
-- `IQueryable<T>` az generic birun mirizad va client query-e ORM minevisad
-- aggregate-haye mokhtalef yek gharardad-e dorough-e yeksan migirand
-
-Generic baraye CRUD-e bi-ghanun kar mikonad. Baraye domain-e por-ghanun, interface-e **dasti-e har aggregate** dorost-tar ast.
-
-**Read repository joda az write.**
-Write: `Get` kamel-e aggregate, `Add`. Read: list-e flat, projection, pagination. In digar CQRS ast ke ba repository tarkib shode. Repository-e write nabayad DTO-ye grid bar gardanad. Repository-e read nabayad aggregate-e ghabel-e `Save` bar gardanad.
-
-**Specification.**
-Bejaye `FindOverdue(date)` va `FindUnpaid(customer)` va tarkib-e an-ha, yek object-e shart (`OverdueSpec`) miferesti. Repository an shart ra be query tabdil mikonad. Ghavi ast, vali yek pattern-e **digar** ast. Repository-e sade bedune specification ham repository ast. An-ha ra yek chiz seda nakon.
-
-## Mesal-e donya, ghabl az har proje
+## Mesal-e koochik
 
 ```csharp
 public interface IOrderRepository
@@ -110,121 +41,79 @@ public interface IOrderRepository
     void Add(Order order);
 }
 
-public sealed class CreateOrderHandler(IOrderRepository orders, IUnitOfWork uow)
-{
-    public async Task Handle(NewOrder request, CancellationToken ct)
-    {
-        var order = Order.Place(request.CustomerId, request.Lines);
-        orders.Add(order);
-        await uow.CommitAsync(ct);
-    }
-}
+var order = Order.Place(customerId, lines); // ghanun inja
+orders.Add(order);                           // faghat ozv-e list
+await uow.CommitAsync(ct);                   // zakhire inja
 ```
 
-Handler nemidanad `Orders` jadval ast ya document. `Order.Place` ghanun ra darad. `Add` faghat elam mikonad "in yeki azin be ba'd ozv-e majmu'e ast". `Commit` jaye digar ast.
+Test-e in handler ye class-e ja'li ast ke `Order` ra to ye `List` negah midarad. Database lazem nist.
 
-Test-e hamin handler yek class-e koochak-e fake ast ke `Order` ra to `List` negah midarad. Database nist. Arzesh-e pattern hamin joda'i ast.
+## Ba chi ghalt mishavad
 
-## Farq ba chiz-hayi ke eshtebah gerefte mishavand
+**DAO** ba zaban-e radif va jadval harf mizanad: in sotun ra update kon. Repository ba zaban-e object-e domain harf mizanad va mowjudiat-e kamel barmigardanad.
 
-**DAO (Data Access Object).**
-DAO row va query ra mipooshand: `FindById` baraye yek jadval, `UpdateColumns`. Zaban-ash zaban-e jadval ast. Repository zaban-e aggregate ast. Yek DAO mitavanad chand jadval ra join konad va DTO bedahad. Repository gharardad mikonad object-e domain-e kamel bedahad, na yek row-e denormal.
+**Active Record** yani khode mowjudiat `Save()` darad va az database khabar darad. Dar Repository mowjudiat az zakhire khabar nadarad.
 
-**Table Gateway / Active Record.**
-Table Gateway yek class baraye yek jadval, ba method-haye SQL. Active Record object-e domain khodesh `Save()` darad va az database khabar darad. Repository amdan in khabar ra **az** object migirad. Entity repository ra inject nemikonad. Agar entity `this.Save()` dashte bashad, repository nist.
+**Unit of Work** miguyad key hame-ye taghir-ha neveshte shavand. Repository miguyad kodam object. Ye class-e EF mitavanad har do naghsh ra bazi konad, vali do naghsh-and.
 
-**Unit of Work.**
-Repository migoyad che objecti. UoW migoyad key hame-ye taghir-ha paydar shavand. Yek object mitavanad har do naghsh ra bazi konad (mesl-e DbContext), vali do naghsh-and. Client-e khoob har do ra be esm-e naghsh mibinad, na be esm-e class-e database.
+**Service** chand kar ra hamahang mikonad, masalan sefaresh besaz va email befrest. Repository faghat haman list ast.
 
-**Service.**
-Service kar-e chand aggregate ra hamahang mikonad. Repository yek majmu'e ast. "Sefaresh besaz va email befran" service ast. "Sefaresh ra bargardan" repository ast.
+## Koja estefade nakon
 
-## Koja bezan, koja nazan
+Form-e sade-ye chahar fieldi ke hich ghanuni nadarad, gahi ba khode EF kafi ast. EF az ghabl ye jur Repository va Unit of Work ast. Laye-ye ezafe faghat vaghti miarzad ke ghanun-e domain dari va mikhahi bedune database test shavad, ya mikhahi tarz-e bargozari (join, hazf-nashode-ha, site) ye ja bemanad.
 
-Bezan vaghti:
+Gozaresh-e bist-filteri ra dakhel-e makhzan-e mowjudiat nariz. An query-e khandan ast, na list-e mowjudiat.
 
-- ghanun-e domain dari va mikhahi bedune database test shavad
-- mikhahi joziat-e load (join, filter-e "hazf-nashode", tenant) yek ja bashad
-- chand implementation-e vaghe'i ya hadaghal yek fake mikhahi
+## Hala dar Dejban
 
-Nazan, ya nazok negah dar, vaghti:
-
-- faghat CRUD-e form ast va ORM khodesh hamin abstraction ra dade
-- interface-at hame-ye ORM ra pass-through mikonad. Pas fake-at ham bayad ORM bashad va chizi joda nashode
-- report-e 20 filter. An query ast, na majmu'e-ye aggregate. Yek class-e read joda besaz, be repository-e write nakob.
-
-## Eshtebah-haye rayej
-
-- Repository-e "khoda": 40 method, ham aggregate, ham report, ham email.
-- `IQueryable` ra ta controller rad kardan. Client query misazad, pas implementation dige avaz nemishavad.
-- Ghanun-e "mitavan hazf kard" dakhel-e `Delete` repository, va entity faghat kisse-ye data.
-- Yek repository-e generic + cast-e daemi be type-e ORM.
-- Farz kardan repository transaction ham hast. Nist.
-
-## Chetor to mosahebe mafhoom ra begou, ghabl az esm-e proje
-
-> "Repository collection-e aggregate ast, na wrapper-e jadval. Client Add va Get mibinad. SQL va commit ra nemibinad. Yek repository baraye root, na baraye har jadval-e bache. Generic repository ra vaghti method-ha yek shape nadarand estefade nemikonam, chon IQueryable leak mishavad va gharardad dorough yeksan mishavad. Farq-ash ba DAO in ast ke DAO row midahad va repository object-e domain-e ba invariant."
-
----
-
-# BAKHSH-E DOVOM — hamin mafhoom to Dejban
-
-Gharardad-e personnel hamin collection ast, ba chand method-e zaban-e domain:
+Gharardad-e personnel injast:
 
 `Microservices/Dejban/Modules/Personnels/Dejban.Modules.Personnels.Domain/Personnels/IPersonnelRepository.cs`
 
-- `GetAsync` / `GetWithDocumentsAsync` — peyda kardan-e root, va yek bar load-e bache-ha vaghti lazem ast
-- `Insert` / `InsertDocument` / `RemoveDocument` — ezafe va hazf. Save nist
-- `SoftDeleteByUnitIdAsync` / `SoftDeleteBySiteIdAsync` — amal-e jam'i-e haman majmu'e, na SQL-e azad
+- `GetAsync` va `GetWithDocumentsAsync` yani rishe ra peyda kon, va sanad-ha ra faghat vaghti lazem ast ba ham biavar.
+- `Insert` va `InsertDocument` va `RemoveDocument` yani ezafe va hazf. Zakhire nistan.
+- `SoftDeleteByUnitIdAsync` kar-e daste-jam'i ru haman list ast, na ye SQL-e azad.
 
-Interface to **Domain** ast. Implementation to Infrastructure, va `PersonnelsDbContext` ra mibinad. Handler faghat interface ra mibinad. In haman joda'i-e bakhsh-e avval ast.
+Interface to Domain ast. Piyadesazi to Infrastructure va `PersonnelsDbContext` ra mibinad. Handler faghat interface ra mibinad.
 
-`Insert` commit nemikonad. Commit `IUnitOfWork.SaveChangesAsync` ast, va khod-e `PersonnelsDbContext` haman UoW ast. Pas do naghsh roye yek class-e EF neshastand, vali handler an-ha ra az do interface mibinad.
+`Insert` zakhire nemikonad. Zakhire `IUnitOfWork.SaveChangesAsync` ast. Khode `PersonnelsDbContext` haman Unit of Work ast.
 
-`GetQueryable` roye hamin interface hast. Az nazar-e kitab, in leak-e `IQueryable` ast ke bala goftam nabayad ta UI beravad. To in proje baraye pagination-e application baz shode. Agar to mosahebe gofti "repository-e ma hichvaght query birun nemidahad", ba hamin method dorogh shode-i. Jomle-ye dorost: write az method-e aggregate miravad. Read gahi `IQueryable` ra to application negah midarad, na to controller.
+`GetQueryable` ru hamin interface hast. Yani query-e EF ta laye-ye application bala amade. Agar to mosahebe begouyi "makhzan-e ma hichvaght query birun nemidahad" ba hamin method dorugh gofte-i. Jomle-ye dorost: neveshtan az method-e mowjudiat miravad. Khandan gahi `IQueryable` ra dakhel-e application negah midarad, na ta controller.
 
-Repository generic-e `IRepository<T>` inja gharardad nist. Method-hayi mesl-e `GetWithDocumentsAsync` dalil-e haman bakhsh-e "chera generic na" hastand.
+Makhzan-e omumi `IRepository<T>` inja gharardad nist. `GetWithDocumentsAsync` dalil-ash hamin ast ke method-ha ye shekl nistan.
 
-Report-e sangin va read-model-e joda (reporting) ra to hamin repository nakubide-and. An sath-e CQRS ast, na method-e panjahom-e `IPersonnelRepository`.
+## Agar beporsand, in tor begou
 
----
+> Makhzan ra list-e mowjudiat midanam. Handler Get va Add mibinad, SQL va commit ra na. Rishe makhzan darad, bache-ha az rah-e rishe miayand. Insert zakhire nist. To Dejban `IPersonnelRepository` to domain-e Personnel ast. Zakhire ba `IUnitOfWork` ast va khode context-e EF an ra piyade karde. Makhzan-e generic nasakhtim. `GetQueryable` ra darim va ta UI nemiravad.
 
-## Script-e 90 sanie
+## Dah so'al
 
-Avval mafhoom, ba'd proje:
+**1. Repository jay-e che chizi ra migirad?**
+Jay-e list-e mowjudiat. Code-e business fekr mikonad ba object-ha kar mikonad. Zakhire posht-e interface ast.
 
-> "Repository ra collection-e aggregate midanam. Client Get va Add mibinad, SQL va commit ra na. Root repository darad, bache-ha az rah-e root load mishavand. Add zakhire-ye nahayi nist. To Dejban `IPersonnelRepository` to domain-e Personnels hast: Get, GetWithDocuments, Insert. Insert save nemikonad. Save `IUnitOfWork` ast va `PersonnelsDbContext` an interface ra implement karde. Generic nasakhtim chon method-ha yek shape nistand. `GetQueryable` ra darim va an ra mahdud be application negah midarim, na inke begoyam ketab 100% ra'ayat shode."
+**2. Chera baraye har jadval ye makhzan nemisazi?**
+Chon ghanun-e mowjudiat faghat vaghti hefz mishavad ke rishe va bache-hash ba ham bashand.
 
----
-
-## 10 soal
-
-**1. Repository daghighan ja-ye chi ra migirad?**
-Ja-ye majmu'e-ye aggregate. Client fekr mikonad list-e object darad. Zakhir-e vaghe'i posht-e interface ast.
-
-**2. Chera baraye har jadval repository nemisazi?**
-Chon invariant-e aggregate faghat ba root-e kamel hefz mishavad. Repository-e joda baraye bache, object ra shekaf mikonad.
-
-**3. Farq-e `Add` va `Commit` chist?**
-`Add` ozviat-e majmu'e ra elam mikonad. `Commit` an ra paydar mikonad va kar-e repository nist.
+**3. Farq-e Add va Commit chi ast?**
+Add miguyad ozv-e list shod. Commit ru disk minevisad va kar-e makhzan nist.
 
 **4. DAO che farqi darad?**
-DAO zaban-e row va jadval ast. Repository zaban-e object-e domain ast va gharardad mikonad aggregate-e kamel bedahad.
+DAO radif va sotun midahad. Repository object-e domain-e kamel midahad.
 
-**5. Generic repository che-vaght shekast mikhorad?**
-Vaghti method-haye domain yek emza nadarand, ya `IQueryable` birun mirizad va client be ORM vast mishavad.
+**5. Makhzan-e generic koja mishkanad?**
+Vaghti method-haye vaghe'i ye emza nadarand, ya `IQueryable` birun mizanad va masraf-konande be ORM michasbad.
 
-**6. `IQueryable` roye interface yani chi?**
-Yaani implementation dige kamelan avaz-pazir nist, chon client query-e haman ORM ra sakhte. Mitavanad amdan baraye read-e dakheli-e application baz shavad, be shart-e inke az an laye birun naravad.
+**6. Ghanun-e "dobare hazf nashavad" koja mineshinad?**
+Dakhel-e mowjudiat. Makhzan faghat mitavanad list ra "faghat zende-ha" ta'rif konad.
 
-**7. Ghanun-e "nabayad dobare hazf shavad" koja beneshinad?**
-To entity. Repository faqat mitavanad majmu'e ra "faghat zende-ha" tarif konad.
+**7. To Dejban in gharardad kojast?**
+`IPersonnelRepository` to domain. `Insert` zakhire nist. Context-e EF posht-e piyadesazi ast.
 
-**8. To Dejban in gharardad koja neshaste?**
-`IPersonnelRepository` to domain. `Insert` save nist. Context-e EF posht-e implementation ast va joda `IUnitOfWork` ham hast.
+**8. `GetWithDocumentsAsync` kodam ghanun ra neshan midahad?**
+Sanad makhzan-e joda nadarad. Az rah-e personnel, vaghti lazem bashad, bargozari mishavad.
 
-**9. `GetWithDocumentsAsync` kodam ghanun-e kitab ra barmiavarad?**
-Bache (document) repository-e joda nadarad. Az rah-e root, vaghti senario document mikhahad, load mishavad.
+**9. Chetor bedune database test mikoni?**
+Ye class-e ja'li ke personnel ra to `List` negah midarad. Test-e khod-e SQL test-e piyadesazi ast, na test-e ghanun-e handler.
 
-**10. Chetor test mikoni bedune database?**
-Fake-e interface ke `List<Personnel>` ast. Handler ra ba an seda mizani. Test-e khod-e SQL test-e implementation ast, na test-e ghanun-e handler.
+**10. Gozaresh-e sangin ra koja migozari?**
+Kharej az makhzan-e mowjudiat. Query-e khandan ya model-e khandan-e joda.

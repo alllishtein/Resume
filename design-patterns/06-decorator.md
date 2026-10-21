@@ -1,101 +1,44 @@
 # 06 — Decorator
 
----
-
-## Ye khat
-
-Yek object ra dakhel-e object-e digar mizarim ke **haman interface** ra darad. Client fargh ra nemibinad. Wrapper ghabl ya ba'd az original, kar-e ezafe mikonad. Original ra edit nemikoni.
-
----
-
-# BAKHSH-E AVAL — khode pattern
+Ye object ra migozari dakhel-e object-e digar ke haman gharardad ra darad. Sedazananade farq ra nemibinad. Pusheshe, ghabl ya bad az asl, ye kar-e ezafe mikonad. Class-e asli ra dast nemizani.
 
 ## Moshkel
 
-Class-e `OrderSender` kar-ash ferestadan ast. Ba'd mikhahi:
+Class-e `OrderSender` kar-ash ferestadan ast. Bad mikhahi log, talash-e dobare, va "agar hamin ra ghablan ferestadim digar nafrest".
 
-- log
-- retry
-- cache
-- "agar hamin kar ra dobare ferestadim, dobare nafrest"
+Agar har kodam ra ba `if` dakhel-e khode class bezari, class chand dalil baraye taghir peyda mikonad. Agar ba inheritance besazi, tarkib-ha monfajer mishavand: `LoggingRetrySender`, `LoggingCacheSender`, va hamin-tor ta akhar.
 
-Agar har kodam ra ba `if` dakhel-e `OrderSender` bezani, class chand dalil baraye taghir peida mikonad. Agar ba inheritance `LoggingOrderSender : OrderSender` besazi, tarkib-e "log + retry + cache" ya selasele-ye enfejari mishavad (`LoggingRetryCacheSender`) ya aslan ghabel-e tarkib nist.
+## Ide
 
-Decorator tarkib ra az rah-e **composition** midahad: har kar-e ezafe yek wrapper, va wrapper-ha rooye ham michinand. Mesl-e lebas: badan yeki ast, kot va kafsh joda pushidani-and.
+Har kar-e ezafe ye pushesh ast. Pushesh-ha ru ham michinand. Mesl-e lebas: badan yeki ast, kot va kafsh joda pushide mishavand.
 
-## Ta'rif-e GoF
-
-Intent: be yek object, **dynamic**, mas'uliat-e ezafe bedeh. Decorator jaygozin-e amali-e subclass ast baraye expand kardan-e raftar.
-
-Kalame-ye `dynamic` mohem ast. Subclass ra compile-time entekhab mikoni. Decorator ra runtime vasl mikoni: emruz ba log, farda bi log, bedune taghir-e class-e asli.
-
-## Sherkat-konande-ha
-
-| Naghsh | Kar |
-|---|---|
-| Component | interface-e moshtarak (`Send`, `Handle`, `Read`) |
-| ConcreteComponent | kar-e asli, bi-khabar az wrapper |
-| Decorator | haman interface ra implement mikonad va yek `Component` dakheli darad |
-| ConcreteDecorator | kar-e ezafe + seda zadan-e dakheli |
-
-Client type-e `Component` ra mibinad. Nemidanad concrete ast ya do laye wrapper.
-
-## Sakhtar
+Sedazananade faghat gharardad ra mibinad, masalan `Send`. Nemidanad asl ast ya do laye pushesh.
 
 ```
-Client
-  -> LoggingDecorator      (Component)
-       -> RetryDecorator   (Component)
-            -> OrderSender (ConcreteComponent)
+sedazananade
+  → pushesh-e log
+      → pushesh-e talash-e dobare
+          → ferestande-ye email
 ```
 
-Har laye faghat laye-ye dakheli ra mishnasad, an ham faghat ba interface. `OrderSender` hich-kodam decorator ra nemishnasad. In hamon "original ra edit nakon" ast.
+Ferestande-ye email hich pusheshi ra nemishnasad.
 
-Shekl-e call:
+Ghanun-ha:
 
-```
-client.Send()
-  log("before")
-    retry
-      orderSender.Send()
-    (agar fail, retry)
-  log("after")
-```
+**Gharardad-e birun va dakhel yeki ast.** Agar pushesh method-e taze-i besazad va sedazananade ra majbur konad haman ra seda bezanad, digar Decorator nist. Fayede-ye pattern in ast ke sedazananade avaz nashavad.
 
-## Ghanun-ha
+**Pushesh saheb-e kar-e asli nist.** Kar ra miseporad be dakhel. Agar hame-chiz ra az no benevisad, pushesh-e dorughin ast.
 
-**1. Interface-e birun va dakhel yeki ast.**
-Agar wrapper method-e jadid-e `SendWithLog` bar gardanad va client ra majbur konad an ra seda bezanad, decorator nist. Facade ya adapter-e shekaste ast. Arzesh-e decorator in ast ke client **avaz nashavad**.
+**Chand pushesh ru ham mineshinand.** Pas pushesh nabayad farz konad dakhel-ash hatman class-e asli ast. Dakhel mitavanad khodesh pushesh bashad.
 
-**2. Decorator owner-e kar-e asli nist.**
-Kar-e asli ra forward mikonad. Agar forward nakonad va khodesh hame chiz ra dobare benevisad, wrapper-e dorough ast.
+**Tartib ma'ni darad.** Log-e birun-e talash-e dobare: ye log baraye chand talash. Log-e dakhel-e talash-e dobare: har talash ye log. Haman do class, do tartib, do raftar.
 
-**3. Tarkib-pazir ast.**
-Do decorator-e ham-interface bayad betavanand rooye ham beneshinand. Pas decorator nabayad farz konad dakheli-ash hatman concrete-e asli ast. Dakheli mitavanad khodesh decorator bashad.
+**Kar-e ezafe-ye penhan bayad roshan bashad.** Talash-e dobare-ye penhan mitavanad email ra do bar befrestad. Agar alamat-e "anjam shod" ra bad az kar-e asli bezari, daghighan ye bar tazmin nist. Agar kar khata bedahad, alamat nemikhorad va talash-e dobare dorost ast. Agar kar movaffagh bashad va alamat khata bedahad, daf'e-ye bad kar dobare ejra mishavad. Dakhel bayad tekrar ra tahammol konad.
 
-**4. Shaffaf budan hazine darad.**
-Client nemidanad cache ya retry hast. In khoob ast ta vaghti raftar-e ezafe **gheyr-e montazere** nashavad. Retry-e penhan mitavanad side-effect-e "email" ra do bar ejra konad. Decorator-e ba side-effect bayad gharardad-e idempotent budan-e dakheli ra boland begoyad.
-
-**5. Tartib-e wrap ma'ni darad.**
-Log-e birun-e retry: yek log, chand talash-e dakheli. Log-e dakhel-e retry: har talash yek log. Haman do class, do tartib, do raftar. Tartib ra sanad kon.
-
-## Anva'
-
-**Decorator-e amalkard.** Log, metric, cache, retry, lock. Original ra avaz nemikonad. Faghat dorash chiz mizanad.
-
-**Decorator-e filter.** Ghabl az original tasmim migirad aslan seda bezanad ya na. "Agar hamin payam ra dide-am, original ra seda nazan." Hanuz decorator ast agar interface yeki bashad. Nazdik-e marz-e chain mishavad. Farq: yek wrapper dor-e yek object-e moshakhas, na zanjir-e candidate-haye ham-arz.
-
-**Decorator-e tarjome-ye natije.** Original `int` midahad, wrapper haman interface ra negah midarad vali natije ra ghabl az bargasht fix mikonad. Agar interface avaz shavad, digar decorator nist. Adapter ast.
-
-## Mesal-e donya
+## Mesal-e koochik
 
 ```csharp
 interface INotifier { Task SendAsync(string message, CancellationToken ct); }
-
-sealed class EmailNotifier : INotifier
-{
-    public Task SendAsync(string message, CancellationToken ct) => /* smtp */;
-}
 
 sealed class IdempotentNotifier(INotifier inner, ISeenStore seen) : INotifier
 {
@@ -108,111 +51,79 @@ sealed class IdempotentNotifier(INotifier inner, ISeenStore seen) : INotifier
 }
 ```
 
-`EmailNotifier` az `seen` khabar nadarad. Client `INotifier` mikhahad va `IdempotentNotifier` migirad. Test-e email bedune `seen` anjam mishavad. Test-e idempotency ba `inner`-e fake anjam mishavad.
+Email az fehrest-e "dide-shode-ha" khabar nadarad. Test-e email bedune an fehrest ast. Test-e tekrar ba ye dakhel-e ja'li ast.
 
-Nokte-ye hamin mesal, chon ba'd to proje tekrari ast: `Mark` **ba'd** az `Send` ast. Agar `Send` throw konad, mark nemishavad va retry mojaz ast. Agar `Send` movaffagh bashad va `Mark` fail shavad, retry dobare `Send` mikonad. Pas decorator "daghighan yek bar" ra jadoo nemikonad. "Talash-e dobare ra kam mikonad" va dakheli bayad dobare-kari ra tahammol konad. In joz'-e mafhoom ast, na joz'-e yek bug-e proje.
+## Ba chi ghalt mishavad
 
-## Farq-ha
+**Inheritance** class ra to selsele-maratab avaz mikonad. Decorator object ra dakhel-e object migozarad va moghe'-e ejra mishe chid. Class-e asli az pushesh khabar nadarad.
 
-| | Decorator | Inheritance | Proxy | Chain |
-|---|---|---|---|---|
-| Vasl | composition, haman interface | subclass | composition, haman interface | list-e handler |
-| Hadaf | behavior-e ezafe, tarkib-pazir | taghir-e daste | kontrol-e dastresi, often yek laye (lazy, remote, security) | entekhab ya ghat'-e masir |
-| Dakheli khabar darad? | na | `base` ra midanad | na | faghat next |
+**Proxy** to GoF shekl-ash nazdik ast, vali hadaf-ash kontrol-e dastresi ast: nagozar bebinad, dir besaz, ya boro az process-e digar biavar. Decorator mas'uliat-e taze ezafe mikonad. Har wrap ra Decorator seda nakon.
 
-Proxy-e GoF va Decorator sakhtar-e yekshan darand. Farq **hadaf** ast. Proxy ja-neshin ast: dastresi, mahal, ya hazine-ye sakhtan ra kontrol mikonad va mas'uliat-e jadid-e business ezafe nemikonad. Decorator mas'uliat-e jadid ezafe mikonad. Agar to mosahebe har wrap ra decorator seda koni, miporsand farq-e proxy chist. Javab hamin paraghraf ast.
+**Chain** chand namzad darad va masir ra miborad. Decorator ye asl-e moshakhas ra mipushanad.
 
-Strategy algorithm ra **avaz** mikonad (dakheli-e motefavet). Decorator algorithm ra **mipooshand** (dakheli haman mimanad, dorash chiz-e jadid).
+**Strategy** khode algorithm ra avaz mikonad. Decorator haman algorithm ra negah midarad va doresh chiz migozarad.
 
-## Koja bezan, koja nazan
+## Koja estefade nakon
 
-Bezan vaghti chand tarkib-e raftar-e ezafe mikhahi va nemikhahi subclass-e `A+B+C` besazi, va client nabayad taghir konad.
+Ye `if` to ye class pushesh nemikhahad. Ye pushesh ke hamzaman log va talash-e dobare va cache va authentication bashad dobare chand-dalili shode. Har kar ye laye.
 
-Nazan vaghti:
+## Hala dar Dejban
 
-- faghat yek `if` to yek class. Wrapper-e tak-estefade hazine-ye zehni ast
-- wrapper-e panj-kar (log+retry+auth+cache+metric) to yek class. An dobare chand-dalil shode. Har kar yek laye
-- interface anqadr bozorg ast ke wrapper bayad dah method-e bi-rabt ra pass konad. Avval interface ra koochak kon
+`IdempotentDomainEventHandler<TDomainEvent>` haman pushesh-e "dobare ejra nakon" ast.
 
-## Eshtebah-haye rayej
+Masir: `Personnels/.../Outbox/IdempotentDomainEventHandler.cs` va mo'adel-ash to har module.
 
-- Farz-e exactly-once bedune transaction-e moshtarak-e "kar + mark"
-- Tartib-e wrap-e tasadofi
-- Decorator-i ke be concrete-e dakheli cast mikonad. Tarkib-paziri mire
-- Inheritance-e `LoggingEmail : Email` va seda kardan-e an "decorator". Sakhtar inheritance ast
+Dakhel-ash parameter-e `decorated` ast, yani handler-e asli. Ghabl az sedayesh to jadval-e `personnels.outbox_message_consumers` negah mikonad. Kelid, shenase-ye event be-alave-ye esm-e noe-e handler-e dakheli ast (`decorated.GetType().Name`). Esm-e khode pushesh na, chon baraye hame yeki ast va do handler-e ye event ra eshtebah yeki mikonad.
 
-## Mafhoom ra injoori begou
+Agar radif hast, handler-e asli seda nemishavad. Agar nist, avval handler, bad insert.
 
-> "Decorator haman interface ra wrap mikonad ta raftar-e ezafe, bedune edit-e asli va bedune taghir-e client, ezafe shavad. Tarkib-ash composition ast, pas chand wrapper rooye ham michinand va tartib-eshan ma'ni darad. Az inheritance kamtar shekanande ast chon asli wrapper ra nemishnasad. Az proxy ba hadaf joda mishavad: proxy dastresi ra kontrol mikonad, decorator mas'uliat ezafe mikonad. Agar mark-e 'anjam shod' ba'd az kar-e asli bashad, exactly-once nist."
+Insert bad az kar ast. Pas haman nokte-ye bala inja zende ast: khatay-e handler yani alamat nemikhorad va talash-e dobare mojaz ast. Movaffaghiyat-e handler va khatay-e insert yani momken ast handler dobare ejra shavad. Jomle-ye dorost: tahvil-e hadaghal ye bar, ba kam kardan-e tekrar. Daghighan ye bar nist.
 
----
-
-# BAKHSH-E DOVOM — hamin mafhoom to Dejban
-
-`IdempotentDomainEventHandler<TDomainEvent>` haman `IdempotentNotifier` ast.
-
-Path: `Personnels/.../Outbox/IdempotentDomainEventHandler.cs` (va hamta-ye har module).
-
-- Component: `DomainEventHandler<T>` / `IDomainEventHandler<T>`
-- Concrete: handler-e business, masalan handler-e `PersonnelCreated`
-- Decorator: `IdempotentDomainEventHandler`
-- Dakheli: parameter-e `decorated`
-
-Raftar-e ezafe: ghabl az `decorated.Handle` to jadval-e `personnels.outbox_message_consumers` migardad. Kilid `domainEvent.Id` be alave-ye **esm-e type-e dakheli** (`decorated.GetType().Name`). Esm-e khod-e decorator na, chon baraye hame yek esm ast va do handler-e yek event ra ghalt yeki mikonad.
-
-Agar satr hast, `decorated` seda **nemishavad**. In haman decorator-e filter ast. Agar nist, avval dakheli, ba'd insert.
-
-Insert ba'd az handle ast. Pas haman nokte-ye bakhsh-e avval inja zende ast: exception-e handle → mark nist → retry mojaz. Handle-e movaffagh va insert-e fail → retry momken ast handle ra dobare seda bezanad. Jomle-ye dorost "at-least-once ba dedupe", na "exactly-once".
-
-Vasl shodan-e wrapper dasti-e `new` nist. `PersonnelsModule.AddDomainEventHandlers` ba Scrutor:
+Chasbidan-e pushesh ba `new` dasti nist. `PersonnelsModule` ba Scrutor in kar ra mikonad:
 
 ```csharp
 services.TryAddScoped(domainEventHandler);
 services.Decorate(domainEventHandler, closedIdempotentHandler);
 ```
 
-`Decorate` yani har ki an handler ra bekhad, wrapper ra migirad, va wrapper original ra be onvan-e `decorated` migirad. Client (`DomainEventHandlersFactory` ke `GetRequiredService` mikonad) type-e business ra mikhahad va decorator migirad. Original az idempotency khabar nadarad. Test-e ghanun-e business bedune jadval-e consumer mojaz mimanad.
+Yani har kas an handler ra bekhad, pushesh ra migirad, va pushesh asl ra be esm-e `decorated` migirad. Karkhane-ye handler-ha `GetRequiredService` mizanad va pushesh ra migirad. Handler-e business az in jadval khabar nadarad. Test-e ghanun-e business bedune SQL-e an jadval momken ast.
 
-Hamin sakhtar, joda, baraye integration event: `IdempotentIntegrationEventHandler` va `AddIntegrationEventHandlers`. Do decorator, do jadval, yek mafhoom.
+Hamin shekl, joda, baraye event-e beyn-e module-ha: `IdempotentIntegrationEventHandler`.
 
-Pipeline-e MediatR (log, validation) az nazar-e sakhtar wrap ast, vali **chain** ast chon chand halqe-ye ham-noghsh va short-circuit-e validation darad. An ra inja decorator-e idempotency seda nakon.
+Pipeline-e MediatR (log va validation) az nazar-e pichidan shabihe ast, vali Chain ast, chon validation masir ra miborad. An ra in pushesh seda nakon.
 
----
+## Agar beporsand, in tor begou
 
-## Script-e 90 sanie
+> Decorator pusheshi ba haman gharardad ast. Sedazananade avaz nemishavad. Chand laye ru ham tartib darand. Class-e asli az pushesh khabar nadarad. Alamat-e bad az kar, daghighan ye bar nist. To Dejban `IdempotentDomainEventHandler` dor-e handler-e domain neshaste. Kelid-ash shenase-ye event va esm-e handler-e dakheli ast. Scrutor ba `Decorate` vasl-ash mikonad. Event-e beyn-e module-ha pushesh-e joda ba hamin ide darad.
 
-> "Decorator ya'ni wrapper-e haman interface, composition na inheritance, client avaz nemishavad, va chand laye rooye ham tartib-e ma'ni-dar darand. Proxy dastresi ra kontrol mikonad. Decorator mas'uliat ezafe mikonad. Mark-e ba'd-az-kar exactly-once nist. To Dejban `IdempotentDomainEventHandler` dor-e handler-e domain neshast. Kilid-ash id-e event va esm-e handler-e dakheli ast. Scrutor ba `Decorate` an ra vasl mikonad ta factory haman type ra bekhad va wrapper begirad. Handle-e throw mark nemizanad. Integration event decorator-e joda-ye hamin olgu ra darad."
+## Dah so'al
 
----
+**1. Chera inheritance baraye "log + talash-e dobare + cache" bad ast?**
+Har tarkib ye subclass-e taze mikhahad. Ba chidan-e pushesh, har laye ra ye bar minevisi.
 
-## 10 soal
+**2. Sedazananade che chizi ra nabayad bebinad?**
+Noe-e moshakhas-e pushesh. Agar majbur shavad method-e taze seda bezanad, Decorator nist.
 
-**1. Chera inheritance baraye "log + retry + cache" bad ast?**
-Tarkib-ha enfejar mikonand: har zirmajmue yek subclass. Composition har laye ra yek bar minevisi va rooye ham migozari.
+**3. Tartib-e do pushesh che ra avaz mikonad?**
+Mahdude-ye ghabl va bad ra. Log-e birun-e talash-e dobare ye record baraye chand talash ast.
 
-**2. Client che chizi ra nabayad bebine?**
-Type-e concrete-e wrapper. Agar mojbur shavad method-e jadid seda bezanad, interface shekaste va decorator nist.
+**4. Farq-ash ba Proxy chi ast?**
+Shekl nazdik ast. Proxy dastresi ra kontrol mikonad. Decorator kar-e taze ezafe mikonad.
 
-**3. Tartib-e do decorator che ra avaz mikonad?**
-Mahdude-ye "ghabl va ba'd". Log-e birun-e retry yek record baraye chand talash ast. Baraks, har talash ra log mikonad.
+**5. Farq-ash ba Chain chi ast?**
+Chain chand namzad darad va masir ra miborad. Decorator ye asl-e moshakhas ra mipushanad.
 
-**4. Farq ba proxy?**
-Sakhtar nazdik ast. Proxy kontrol-e dastresi ya hazine-ye sakhtan ast. Decorator mas'uliat-e jadid-e raftari ast.
+**6. Chera alamat-e bad az kar daghighan ye bar nist?**
+Beyn-e movaffaghiyat-e kar va movaffaghiyat-e alamat, kharabi mitavanad kar ra dobare pish biavarad.
 
-**5. Farq ba chain?**
-Chain chand candidate darad va masir ra miborad. Decorator yek original-e moshakhas ra mipooshand.
+**7. To Dejban handler-e asli chetor joda test mishavad?**
+Pushesh ba DI doresh amade. Test-e ghanun, jadval-e consumer ra nemibinad.
 
-**6. Chera mark-e ba'd az kar exactly-once nist?**
-Beyne movaffaghiat-e kar va movaffaghiat-e mark, crash mitavanad kar ra dobare pish biyavarad.
+**8. Chera `GetType` ru `decorated` ast na ru khode pushesh?**
+Khode pushesh baraye hame ye esm darad. Tekrar bayad handler-e business ra joda konad.
 
-**7. To Dejban original chetor az wrapper joda test mishavad?**
-Handler-e business `decorated` nist. Decorator ba DI push shode. Test-e ghanun wrapper va SQL-e consumer ra nemibinad.
+**9. Do handler baraye ye event chand bar ejra mishavand?**
+Har kodam ye bar. Do esm, do radif.
 
-**8. Chera `GetType()` roye `decorated` ast na `this`?**
-`this` hame-ye event-ha ra yek esm mikonad. Dedup bayad handler-e business ra joda konad.
-
-**9. Do handler baraye yek event chand bar ejra mishavand?**
-Har kodam yek bar. Do esm, do satr. Decorator-e har handler joda wrap shode.
-
-**10. `services.Decorate` az nazar-e pattern chi mikonad?**
-Assembly-e runtime-e zanjir-e wrapper. Client `GetRequiredService(handlerType)` mizanad va biruni-tarin decorator ra migirad, bedune `new` dasti.
+**10. `services.Decorate` che mikonad?**
+Har kas noe-e handler ra bekhad, pushesh ra migirad va asl dakhel-e pushesh ast.

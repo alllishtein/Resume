@@ -1,69 +1,48 @@
-# 17 — Hoviat-e cache va Query Key
+# 17 — Kelid-e cache
 
----
+Cache faghat vaghti kar mikonad ke bedani in dade haman dade-ye ghabli ast ya na. An tasmim ra hoviat miguyand. Factory-e key ja-i ast ke hoviat ye bar ta'rif mishavad, ta nevisande va batel-konande do esm-e mokhtalef nasazand.
 
-## Ye khat
-
-Cache faghat vaghti kar mikonad ke bedani **in dade haman dade-ye ghabli ast ya na**. An tasmim ra "hoviat" migoyand. Factory-e key ja-i ast ke hoviat **yek bar** tarif mishavad, ta nevisande va batel-konande do esm-e mokhtalef nasazand.
-
-Factory inja pattern-e koochak-e avval-e ketabche-ye factory ast. Mafhoom-e bozorg-tar **hoviat-e cache** ast. An ra avval yad begir.
-
----
-
-# BAKHSH-E AVAL — khode pattern
+Factory inja pattern-e koochak ast. Mafhum-e bozorg-tar hoviat-e cache ast.
 
 ## Moshkel
 
-UI list-e "personnel-haye site-e A, safhe-ye 2, filter-e ali" ra mikeshad. Dafe-ye ba'd haman safhe ra baz mikoni. Do rah:
+UI list-e "personnel-haye site-e A, safhe-ye 2, filter-e ali" ra mikeshad. Dafe-ye bad haman safhe ra baz mikoni.
 
-- dobare shabake. Dorost, vali kond va por-tekrar
-- haman hafeze-ye ghabli. Sari', vali **faghat** agar motma'en bashi haman list ast
+Agar cache-e "personnel" ye kisse-ye bi-esm bashad, filter-e ali va filter-e reza ye javab-e ghalat share mikonand. Agar har component ye esm-e dasti besazad (`"personnel-list"` va `"personnel_list"`), do cache-e morde dari: yeki ra update mikoni, digari ru safhe mimanad.
 
-Agar cache-e "personnel" yek kisse-ye bi-esm bashad, filter-e ali va filter-e reza yek javab-e ghalat share mikonand. Agar har component yek esm-e dasti besazad (`"personnel-list"` va `"personnel_list"` va `"Personnel?"`), do cache-e morde dari: yeki ra update mikoni, digari rooye safhe mimanad.
+## Ide
 
-## Ta'rif-e hoviat
+Hoviat-e ye entry = hame-ye chizi ke natije-ye server ra avaz mikonad, va hich chiz-e ezafe.
 
-Hoviat-e yek entry-e cache = hame-ye chizi ke **natije-ye server** ra avaz mikonad, va hich chiz-e ezafe.
+Baraye ye list-e ma'mul: kodam manba', kodam shekl (safhe-ye tak ya infinite), kodam vorudi (filter, sort, shomare-ye safhe, tenant).
 
-Baraye yek list-e ma'mool:
+Tenant joz'-e hoviat ast. Do site ye JSON nistan. Faramush-e tenant bug-e "dade-ye site-e ghabli ru site-e jadid" ast.
 
-- kodam manba' (personnel, na vehicle)
-- kodam shekl (safhe-ye tak, na infinite)
-- kodam vorudi (filter, sort, shomare-ye safhe, andaze-ye safhe, tenant)
+Chizi ke natije ra avaz nemikonad joz'-e key nist: makhfi budan-e ye kolon, baz budan-e modal, scroll. Gozashtan-eshan to key, cache ra shekaf mikonad.
 
-Tenant joz'-e hoviat ast. Do site yek JSON nistan. Faramoosh-e tenant bug-e "dade-ye site-e ghabli rooye site-e jadid" ast. Az bug-haye klassik-e cache-e UI.
+## Batel kardan
 
-Chizi ke natije ra avaz **nemikonad** joz'-e key nist: makhfi budan-e yek kolon-e jadval, baz budan-e modal, scroll. An-ha state-e namayesh-and. Gozashtan-eshan to key, cache ra shekaf mikonad va hit ra az beyn mibarad.
+Neveshtan haghighat-e server ra avaz mikonad. Cache-e ghabli dorugh mishavad.
 
-## Batel kardan (invalidation)
+**Batel kon.** Begou in hoviat digar ghabel-e etemad nist. Dafe-ye bad dobare migirad. Sade.
 
-Neveshtan (mutation) haghighat-e server ra avaz mikonad. Cache-e ghabli dorough mishavad. Do rah:
+**Be-rooz-e khoshbinane.** Cache ra haman lahze avaz kon, bad server ra seda bezan. Agar server rad kard, bargard. Sari'-tar, va por az race. Baraye form-e bozorg aksaran batel kardan-e sade kam-khatar-tar ast.
 
-**Batel kon.** Begou "in hoviat dige ghabel-e etemad nist". Dafe-ye ba'd ke UI an ra mikhahad, dobare migirad. Sade. Yek request-e ezafe.
+Batel kardan bayad haman hoviat ra beshnasad. Agar nevisande `['personnel', id]` ra update konad va khandan `['personnel','detail',id]` bashad, safhe dorugh mimanad.
 
-**Be-rooz-e khoshbinane (optimistic) ya set-e dasti.** Cache ra haman lahze avaz kon, bad server ra seda bezan. Agar server rad kard, bargard. Sari'-tar, va por az race. Baraye form-e bozorg aksaran batel-kardan-e sade kam-khatar-tar ast.
-
-Batel-kardan **bayad haman hoviat** ra beshnasad. Agar nevisande key-e `['personnel', id]` ra update konad va khandan key-e `['personnel','detail',id]` bashad, batel-kardan be kisse-ye digar rafte. Safhe dorough mimanad. In bug-e "key-e dasti-e do ja" ast.
-
-## Pishvand (prefix)
-
-Hoviat-e sakhtari:
+## Pishvand
 
 ```
 ['personnel']                          hame-ye chiz-e in manba'
-  ['personnel', 'list', { site, q }]   yek list-e khas
-  ['personnel', 'detail', id]          yek record
+  ['personnel', 'list', { site, q }]
+  ['personnel', 'detail', id]
 ```
 
-Batel-kardan-e `['personnel']` ya'ni "har chizi ke ba in **shoru** mishavad". List va detail har do. Batel-kardan-e `['personnel','detail',id]` faghat yek record.
+Batel kardan-e `['personnel']` yani har chizi ke ba in shoru mishavad. List va detail har do.
 
-Ghanun: az omumi be joz'i benevis. Pishvand-e moshtarak amdi ast, na tasadof-e string.
+Ghanun: az omumi be joz'i benevis. Pishvand-e kheyli omumi 40 list-e bi-rabt ra ham refetch mikonad. Pishvand-e kheyli joz'i ye list-e digar ra dorugh negah midarad.
 
-Hazine-ye pishvand-e kheili omumi: yek edit-e koochak, 40 list-e bi-rabt ra ham refetch mikonad. Hazine-ye pishvand-e kheili joz'i: yek list-e digar dorough mimanad. Entekhab-e "kodam pishvand ra batel konam" joz'-e tarh ast.
-
-## Factory chera vasat-e in mafhoom neshaste
-
-Factory inja algorithm-e sakht-e object nist. Yek ja-ye **tanha** baraye sakhtan-e array-e hoviat ast.
+## Factory chera
 
 ```javascript
 const personnelKeys = {
@@ -74,51 +53,27 @@ const personnelKeys = {
 ```
 
 Khandan: `personnelKeys.list(params)`.
-Ba'd az save: `invalidate(personnelKeys.all)`.
+Bad az save: `invalidate(personnelKeys.all)`.
 
-Do call az yek tabe'. Typo-ye string-e joda az beyn miravad. Agar farda `'personnel'` shavad `'staff'`, yek file avaz mishavad.
+Do call az ye tabe'. Agar farda `'personnel'` shavad `'staff'`, ye file avaz mishavad.
 
-Factory-e bad: `all` yek string bashad va `list` string-e digar, va invalidate ja-ye sevom string-e sevom. Esm-e factory dari, hoviat-e vahed na.
+Ghanun-ha:
 
-## Ghanun-ha
+**Haman vorudi, haman key. Vorudi-ye motefavet, key-e motefavet.**
 
-**1. Haman vorudi, haman key. Vorudi-ye motefavet, key-e motefavet.**
-Do filter do cache. Yek filter yek cache.
+**Key bayad ghabel-e moghayese-ye sakhtari bashad.** Do object-e `{a:1}` agar library hash-e sakhtari konad yeki-and. E'temad be reference-e object shekaste ast, chon har render object-e jadid misazad. `{a:1, b:undefined}` va `{a:1}` shayad do hash bashand. Vorudi ra ghabl az key normalize kon.
 
-**2. Key bayad ghabel-e moghayese-ye sakhtari bashad.**
-Do object-e `{a:1}` va `{a:1}` agar library structural hash konad yeki-and. E'temad-e "reference-e object" shekaste ast, chon har render object-e jadid misazad va cache hichvaght hit nemishavad. Az an taraf, `{a:1, b:undefined}` va `{a:1}` shayad do hash bashand. Vorudi ra **ghabl** az key normalize kon: field-e khali ra hazf kon, sort-e sabet.
+**`undefined` be onvan-e id key-e vaghe'i nasaz.** `detail(undefined)` ye kisse-ye moshtarak-e "hanuz id nadaram" misazad. Ta id nist, fetch nakon (`enabled: false`).
 
-**3. `undefined` be onvan-e id key-e vaghe'i nasaz.**
-`detail(undefined)` yek kisse-ye moshtarak-e "hanuz id nadaram" misazad va ba record-e ba'di ghalt share mishavad. Ta id nist, fetch nakon (`enabled: false`). Key-e morde nasaz.
+**Shekl-e dade joz'-e hoviat ast.** List-e safhe-bandi va list-e infinite ye JSON nistan. Do key.
 
-**4. Shekl-e dade joz'-e hoviat ast.**
-List-e safhe-bandi va list-e infinite (safhe-ha-ye anbashte) yek JSON nistan. Do key. Share-e an-ha bug-e "safhe-ye 2 ja-ye safhe-ha-ye 1..n" ast.
+**Key-e kheyli bozorg cache ra shekaf mikonad.** Kole form-e 40 field, hatta field-hayi ke server nemikhanad.
 
-**5. Key-e kheili bozorg cache ra shekaf mikonad.**
-Gozashtan-e kole form-e 40 field, hatta field-hayi ke server nemikhanad. Har taghir-e bi-asar, miss-e cache.
+URL-e kham key-e bad ast. `/a?b=1&c=2` va `/a?c=2&b=1` do string-and va ye dade. Factory-e normalize-shode an-ha ra yeki mikonad.
 
-## Farq-ha
+List-e server ra to Zustand copy nakon. Query cache manba'-e dade-ye server ast. Zustand state-e client ast.
 
-**URL be onvan-e key.** Nazdik, vali `/a?b=1&c=2` va `/a?c=2&b=1` do string-and va yek dade. Factory-e normalize-shode an-ha ra yeki mikonad. URL-e kham na.
-
-**Cache-e HTTP-e browser.** Hoviat-ash URL + header ast va dast-e to nist. Cache-e client-e query dast-e to ast: mitavani ba'd az mutation daghighan haman manba' ra batel koni. Browser an gharardad-e business ra nemidanad.
-
-**Zustand.** State-e client. Query cache state-e **server**. Do manba'. Copy kardan-e list-e server be Zustand do haghighat misazad.
-
-## Eshtebah-haye rayej
-
-- string-e dasti to component va string-e dige to `invalidate`
-- faramoosh-e tenant to key
-- `enabled` bedune tafkik, va fetch-e `detail(undefined)`
-- batel-kardan-e hame-ye app ba'd az har save ("ta hatman taze bashad"). Kar mikonad va cache ra bi-ma'ni mikonad
-
-## Mafhoom ra injoori begou
-
-> "Cache bedune hoviat javab-e ghalat-e kasi digar ra neshan midahad. Hoviat = manba' + shekl + vorudi-hayi ke server ra avaz mikonand, az jomle tenant. Pishvand-e sakhtari batel-kardan-e daste-bandi midahad. Factory tanha ja-ye sakhtan-e an hoviat ast ta khandan va invalidate az ham joda nasavand. Object-e key structural ast, pas vorudi ra normalize mikonam. Id-e undefined fetch nemishavad. List va infinite do hoviat-and."
-
----
-
-# BAKHSH-E DOVOM — hamin mafhoom to front-e Dejban
+## Hala dar front-e Dejban
 
 Shekl-e dorost: `apps/dejban/src/services/employment-type/emp-type.keys.js`
 
@@ -132,58 +87,50 @@ export const empTypeKeys = {
 };
 ```
 
-`all` pishvand ast. `invalidateQueries({ queryKey: empTypeKeys.all })` list va detail va infinite va pagination ra ba ham mishavad, chon TanStack prefix match mikonad. `infinite` joda az `pagination` ast. Haman ghanun-e "shekl-e dade joz'-e hoviat".
+`all` pishvand ast. `invalidateQueries({ queryKey: empTypeKeys.all })` list va detail va infinite va pagination ra ba ham mishavad, chon TanStack prefix match mikonad. `infinite` joda az `pagination` ast.
 
-Params dakhel-e key ast. Do filter do entry. TanStack key ra hash-e sakhtari mikonad, na reference-ye React. Hanooz field-e `undefined` ra normalize kon ta do shekl-e "khali" do cache nasavand.
-
-**Jaye shekaste-ye hoviat-e vahed**, ta an ra be onvan-e "hamin-ja ham dorost ast" nagoyi:
-
-`duty-roster.service.js` factory-e `dutyRosterKeys` darad (`cycles`, `roster`, ...). Invalidate-e ba'd az mutation hanooz string-e joda ast:
+**Jay-e shekaste.** `duty-roster.service.js` factory-e `dutyRosterKeys` darad, vali invalidate hanuz string-e joda ast:
 
 ```javascript
 await client.invalidateQueries({ queryKey: ['duty-cycles'] });
 ```
 
-In **alan** kar mikonad chon `cycles(params)` ba `['duty-cycles', params]` shoru mishavad va prefix match ast. Vali do manba'-e esm dari. Rename-e factory, string-e invalidate ra ja migozarad. Cache-e zende va cache-e morde. Jomle-ye mosahebe: "gharardad-e `empTypeKeys` in ast ke `all` va `list` az yek pishvand biyayand va invalidate haman tabe' ra seda bezanad. Duty roster hanuz string-e joda darad va an shekaf-e hoviat ast."
+Alan kar mikonad chon `cycles(params)` ba `['duty-cycles', params]` shoru mishavad. Vali do manba'-e esm dari. Rename-e factory, string-e invalidate ra ja migozarad. Jomle-ye mosahebe: gharardad-e `empTypeKeys` in ast ke invalidate haman tabe' ra seda bezanad. Duty roster hanuz string-e joda darad.
 
-`queryFn` factory nist. Factory esm misazad. Gereftan-e dade `*.http.js` ast. Ghalt kardane-shaan hoviat va transport ra yek file-ye bi-marz mikonad.
+`queryFn` factory nist. Factory esm misazad. Gereftan-e dade `*.http.js` ast.
 
----
+## Agar beporsand, in tor begou
 
-## Script-e 90 sanie
+> Cache hoviat mikhahad: manba', shekl, vorudi, tenant. Chiz-e namayeshi to key nist. Pishvand-e omumi batel kardan-e daste-bandi midahad. Factory tanha jay-e sakhtan-e an array ast. empTypeKeys hamin ra darad. Infinite va safhe-ye tak do shekl-and. Invalidate-e all hame ra mishavad chon prefix ast. Duty roster factory darad vali ye ja string-e joda ham invalidate mikonad. An shekaf-e gharardad ast.
 
-> "Cache hoviat mikhahad: manba', shekl, vorudi, tenant. Chiz-e namayeshi to key nist. Pishvand-e omumi batel-kardan-e daste-bandi midahad. Factory tanha sakhtan-e an array ast ta do string-e dasti joda nasavand. empTypeKeys hamin ra darad: all, list, infinite, pagination, detail. Infinite va safhe-ye tak do shekl-and. Invalidate-e all hame ra mishavad chon prefix ast. Duty roster factory darad vali yek ja string-e jodagane ham invalidate mikonad. Kar mikonad ta vaghti esm-ha yeki bemanand. An ra shekaf-e gharardad midanam, na pattern-e dovom."
+## Dah so'al
 
----
-
-## 10 soal
-
-**1. Hoviat-e cache chist?**
-Majmoo'e-ye hame-ye vorudi-hayi ke javab-e server ra avaz mikonand. Na bishtar, na kamtar.
+**1. Hoviat-e cache chi ast?**
+Majmue-ye hame-ye vorudi-hayi ke javab-e server ra avaz mikonand.
 
 **2. Chera tenant joz'-e key ast?**
-Chon dade-ye do tenant yek javab nist. Cache-e bedune tenant data-ye ghabli ra rooye tenant-e jadid neshan midahad.
+Chon dade-ye do tenant ye javab nist.
 
 **3. Pishvand che mikonad?**
-Batel-kardan-e `['personnel']` har key-i ke ba an shoru shavad ra mishavad, bedune list-e dasti-e har safhe.
+Batel kardan-e `['personnel']` har key-i ke ba an shoru shavad ra mishavad.
 
 **4. Chera factory?**
-Ta khandan va invalidate az yek tabe' key besazand. Do string-e dasti do kisse-ye bi-khabar-e ham-and.
+Ta khandan va invalidate az ye tabe' key besazand.
 
 **5. Object-e jadid-e har render cache ra miss mikonad?**
-Agar key reference-e shakhe'i bashad bale. Agar hash-e sakhtari bashad na, be shart-e field-haye sabet. `undefined` ra normalize kon.
+Agar key reference-e shakhe'i bashad bale. Agar hash-e sakhtari bashad na, be shart-e field-haye sabet.
 
 **6. `detail(undefined)` che bug-i ast?**
-Yek kisse-ye moshtarak baraye "id nadaram" va ehtemal-e share-e ghalat. `enabled: false` ta id biaid.
+Ye kisse-ye moshtarak baraye "id nadaram". `enabled: false` ta id biayad.
 
 **7. Infinite va pagination chera do key?**
-Shekl-e zakhire-shode yeki nist. Share-e cache safhe ra kharab mikonad.
+Shekl-e zakhire-shode yeki nist.
 
-**8. Batel-kardan-e hame-ye app ba'd az har save?**
-Taze mimanad va cache digar cache nist. Kam-tarin pishvand-i ke dade-ye dide-shode ra mipooshand.
+**8. Batel kardan-e hame-ye app bad az har save?**
+Taze mimanad va cache digar cache nist. Kam-tarin pishvandi ke dade-ye dide-shode ra mipushanad.
 
-**9. `empTypeKeys.all` che array-i ast va chi ra mipooshand?**
-`['empType']`. List, detail, infinite, pagination. Chon hame ba haman pishvand shoru mishavand.
+**9. `empTypeKeys.all` chi ra mipushanad?**
+`['empType']`. List, detail, infinite, pagination.
 
-**10. Shekaf-e duty roster chist?**
-Factory `dutyRosterKeys` ast vali invalidate string-e `['duty-cycles']` joda neveshte shode. Prefix alan yeki ast. Do manba'-e esm hanuz hast.
+**10. Shekaf-e duty roster chi ast?**
+Factory `dutyRosterKeys` ast vali invalidate string-e `['duty-cycles']` joda neveshte shode.

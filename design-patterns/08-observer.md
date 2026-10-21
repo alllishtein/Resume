@@ -1,186 +1,126 @@
 # 08 — Observer
 
----
-
-## Ye khat
-
-Yek object vaziat-ash avaz mishavad. Kasan-i ke **ghablan** gofte-and "be man ham begoo", khabar mishavand. Object-e avval esm-e an-ha ra be soorat-e list-e sabet-e compile nemishnasad.
-
----
-
-# BAKHSH-E AVAL — khode pattern
+Ye object vaz'-ash avaz mishavad. Kasan-i ke ghablan gofte-and "be man ham begou", khabar mishavand. Object-e avval esm-e class-e an-ha ra dakhel-e khodesh nadarad.
 
 ## Moshkel
 
-`Order` vaghti pardakht mishavad bayad anbar, email, va amarnama-ye forush khabar shavand. Agar `Order.Pay()` mostaghim `warehouse.Reserve()` va `mail.Send()` ra seda bezanad:
+Vaghti sefaresh pardakht mishavad, anbar va email va amar bayad bakhabar shavand. Agar `Pay()` mostaghim har se ra seda bezanad:
 
-- `Order` be hame-ye an system-ha vast shode
-- ezafe kardan-e "sms ham befrest" yani virayesh-e `Pay`
-- test-e `Pay` bedune email va anbar nist
-- `Order` nemidanad chand nafar vaghe'an mohem-and. Faghat list-e emrooz ra balad ast
+- sefaresh be hame-ye an system-ha chasbide
+- ezafe kardan-e payamak yani virayesh-e `Pay`
+- test-e pardakht bedune email va anbar nist
 
-Observer list ra **baz** mikonad. `Order` faghat migoyad "pardakht shod". Anbar va email khod-eshan gush midadand.
+## Ide
 
-## Ta'rif-e GoF
+Sefaresh faghat miguyad "pardakht shod". Anbar va email khodeshan gush dade budand.
 
-Intent: dependency-e yek-be-chand tarif kon ta vaghti object-e avval vaziat avaz kard, hame-ye vast-shode-ha khodkar khabar va be-rooz shavand.
-
-Esm-e digar-e ghadimi: Publish / Subscribe. (Bus-e shabake ba'dan hamin esm ra bardasht. Pa'in farq-eshan ra begir.)
-
-## Sherkat-konande-ha
-
-| Naghsh-e GoF | Esm-e rayej | Kar |
-|---|---|---|
-| Subject | Publisher | list-e observer ra darad. `Attach`, `Detach`, `Notify` |
-| Observer | Subscriber | interface-e `Update` |
-| ConcreteSubject | — | vaziat-e vaghe'i. Vaghti avaz shod `Notify` |
-| ConcreteObserver | — | be `Update` padokh midahad |
-
-Subject concrete-e observer ra nemishnasad. Faghat interface. Observer aksaran subject ra mishnasad ta betavanad vaziat-e jadid ra **bekeshad** (pull). Dar shekl-e push, `Update(data)` hame-ye chiz ra haml mikonad va observer subject ra kamtar mishnasad.
-
-## Sakhtar
+Be objecti ke khabar midahad Subject miguyand. Be gush-dahande Observer. Subject list-e gush-dahande-ha ra darad. Gush-dahande-ha ham ra seda nemizanand.
 
 ```
 order.Pay()
-  -> vaziat = Paid
-  -> Notify()
-       -> for each observer in list: observer.Update(order)
-            warehouse.Reserve(...)
-            mail.Send(...)
+  → vaziat = pardakht-shode
+  → be har gush-dahande: khabar bedeh
+       anbar reserve mikonad
+       email miravad
 ```
 
-Ezafe kardan-e sms = yek class-e jadid + yek `Attach`. `Pay` avaz nemishavad. In haman Open/Closed ast.
+Payamak-e taze yani ye class-e taze va ye sabt-nam. `Pay` avaz nemishavad.
 
-## Ghanun-ha
+Ghanun-ha:
 
-**1. Subject list ra darad, observer-ha yekdigar ra na.**
-Sms nabayad email ra seda bezanad. Agar seda bezanad, web-e mostaghim bargashte va observer faghat yek hop-e ezafe bude.
+**Subject list ra darad, gush-dahande-ha yekdigar ra na.** Payamak nabayad email ra seda bezanad. Agar seda bezanad, tar-e ankabut bargashte.
 
-**2. `Notify` gharardad-e "khabar", na "dastur-e ba-javab".**
-Subject montazer-e return-e business-e yek observer-e khas nemimimand. Agar bemanad, dobare be an yek nafar vast shode. (Mitavanad montazer-e tamoom shodan-e hame bemanad ta exception ra bebine. An hamchenan "be hame begoo" ast, na "javab-e anbar ra be man bargardan ta sefaresh ra betanam bebandam".)
+**Khabar, dastur-e ba-javab nist.** Subject montazer-e return-e business-e ye gush-dahande-ye khas nemimanad. Agar bemanad, dobare be an yek nafar chasbide.
 
-**3. Attach va Detach motenazer-and.**
-Observer-e UI ke subject-e toolani-omr ra `Attach` mikonad va `Detach` nemikonad, subject an ra zende negah midarad. Memory leak-e klassik-e hamin pattern ast. Har subscribe bayad tarighe-ye unsubscribe dashte bashad, ya lifetime-e subject anqadr kutah bashad ke leak ma'ni nadahad.
+**Sabt-nam va laghv bayad juft bashand.** Gush-dahande-i ke subscribe mikonad va unsubscribe nemikonad, subject an ra zende negah midarad. Memory leak-e ma'ruf-e hamin pattern ast.
 
-**4. Tartib-e `Notify` ra gharanti farz nakon**, magar sanad karde bashi.
-List-e `foreach` tartib-e attach ra darad. Business nabayad be "avval anbar, ba'd email" az tariq-e tasadof-e list tekye konad. Agar tartib gharardad ast, an dige observer-e azad nist. Yek orchestrator-e sarih mikhahi.
+**Tartib-e khabar ra gharanti farz nakon**, magar neveshte bashi. Gush-dahande-ha bayad mostaghel bashand. Agar tartib gharardad ast, digar observer-e azad nisti. Ye hamahang-konande-ye roshan mikhahi.
 
-**5. Exception-e yek observer gharardad mikhahad.**
-Agar dovomin `Update` throw konad, sevom aslan seda nemishavad. Ya hame ra try kon va jam' kon, ya avvalin shekast kol-e `Notify` ra beborad. Har do ghabel-e defa'. Bi-gharardad bug ast.
+**Exception-e ye gush-dahande gharardad mikhahad.** Agar dovomin throw konad, sevom aslan seda nemishavad. Ya hame ra try kon, ya avvalin shekast kol ra beborad. Bi-gharardad bug ast.
 
-## Push va pull
+Do jur khabar:
 
-**Push.** `Update(OrderPaid data)`. Subject midanad observer che mikhahad. Agar har observer field-e motefavet bekhad, emzaye `Update` varam mikonad.
+**Push.** Khod-e khabar dade ra haml mikonad: `OrderPaid { OrderId, Total }`. Gush-dahande be object-e zende vasl nist.
 
-**Pull.** `Update(Subject subject)`. Observer khodesh `subject.Status` ra mikhanad. Subject nemidanad ke che fieldi mohem ast. Observer be subject vast-tar mishavad.
+**Pull.** Faghat miguyad "avaz shodam" va gush-dahande khodesh vaziat ra mikhanad. Subject nemidanad che fieldi mohem ast, vali gush-dahande be subject vast-tar mishavad.
 
-Domain event-e modern aksaran push-e **daded** ast: khod-e event hame-ye field-e lazem ra darad (`OrderPaid { OrderId, Total }`) va observer be aggregate-e zende vast nemishavad. In behtar az har do shekl-e ghadimi baraye system-e chand-laye ast, chon event yek value-e sabet ast, na pointer be object-e motaghayer.
+Event-e domain-e emruz aksaran push-e sabet ast. Event ye value ast, na pointer be object-e motaghayer.
 
-## Deferred notification — joz'-e mohem ke GoF-e UI nadarad
+## Khabar-e haman lahze va khabar-e ba'd az commit
 
-GoF-e ketab `Notify` ra **haman lahze**-ye taghir seda mizanad. To business-e database in aksaran khatar ast:
+Ketab aksaran haman lahze-ye taghir hame ra seda mizanad. To business-e database in khatar ast: email miravad, bad transaction rollback mishavad, email-e dorugh rafte.
 
-- observer email mifrestad
-- ba'd transaction rollback mishavad
-- email-e dorough rafte
+Shekl-e dorost: object event ra yadash midarad va hanuz kasi ra seda nemizanad. Bad az commit-e movaffagh, kasi digar list ra mikhanad va gush-dahande-ha ra seda mizanad. Hanuz observer ast. Faghat zaman-e khabar aghab oftade.
 
-Pas shekl-e jadid: subject event ra **yadash midarad** va hanooz kasi ra seda nemizanad. Ba'd az commit-e movaffagh, kasi digar list ra mikhanad va observer-ha ra seda mizanad. Esm-e rayej: domain event-e deferred.
+## Ba chi ghalt mishavad
 
-Hanooz observer ast: chand shenavande, subject an-ha ra be esm-e class-e anbar va email nemishnasad. Farq faghat **zaman-e Notify** ast. In ra ba "event-e haman lahze" ghalt yeki nakon. Mosahebe hamin ra miporsad.
+**Send-e MediatR** ye handler va ye javab darad. Observer chand shenavande darad.
 
-## Farq ba chiz-haye nazdik
+**Saf-e Rabbit** haman "khabar bedune esm-e shenavande" ast, vali beyn-e process, ba retry va tekrar. Observer-e ketab dakhel-e ye process va haman call stack ast.
 
-**Mediator.** Subject dar observer list-e observer-ha ra (ya yek registry) darad va "be hame" migooyad. Mediator-e GoF ghanun-e hamkari-e do-tarafe ra markazi mikonad: widget-ha hamdigar ra nemishenasand **va** vasete tasmim migirad ki ra seda bezanad, na hatman hame ra. Command bus yek handler darad. Observer chand ta.
+**`event` to C#** abzar-e zaban baraye hamin pattern ast. Abzar pattern nist. Mishavad observer dasht bedune keyword-e `event`.
 
-**Pub/Sub-e bus (Rabbit).** Haman mafhoom-e "khabar bedune esm-e shenavande", vali beyne process, ba queue, retry, va at-least-once. Observer-e GoF dakhel-e yek process va aksaran haman call stack ast. Bus copy-e hafeze nist.
+Observer ra vaghti nazan ke ye asar hatmi dari va javab-ash ra haman lahze mikhahi: "agar anbar kam bud, sefaresh sabt nashavad". An seda-ye mostaghim ya `Result` ast. Observer an ra penhan mikonad.
 
-**Event-e zaban (C# `event`).** Abzar-e zaban baraye hamin pattern: `+=` ham Attach, `Invoke` ham Notify. Abzar pattern nist. Mishe observer dasht bedune keyword-e `event` (list-e dasti, ya scan-e handler-ha).
-
-## Koja bezan, koja nazan
-
-Bezan vaghti "ye chiz etefagh oftad" chand asar-e mostaghel darad va nemikhahi asar-e jadid class-e asli ra edit konad.
-
-Nazan vaghti yek asar-e hatmi-e haman senario dari ke bayad javab-ash ra haman lahze bedani ("agar anbar kam bud, sefaresh sabt nashavad"). An call-e mostaghim ya natije-ye `Result` ast. Observer an ra penhan mikonad va khata ra be "kasi yek ja throw kard" tabdil mikonad.
-
-## Eshtebah-haye rayej
-
-- Notify ghabl az commit
-- Observer-i ke subject ra dobare avaz mikonad va Notify-e too-daro misazad (re-entrancy)
-- Tekye be tartib
-- Subscribe bedune unsubscribe rooye subject-e singleton
-- Goftan-e "har event observer-e bus ast" bedune tafkik-e in-process va queue
-
-## Mafhoom ra injoori begou
-
-> "Observer dependency-e yek-be-chand ast. Subject Notify mikonad, concrete-e shenavande ra nemishnasad. Shenavande-ha hamdigar ra seda nemizanand. Push dade mifrestad, pull subject ra mikhanad. Domain event-e khoob push-e sabet ast va Notify-ash ra ta ba'd az commit aghab mindazad, vagarna asar-e khareji ghabl az rollback anjam mishavad. Tartib-e shenavande gharanti nist magar sarih neveshte bashad. Chand shenavande farq-e in pattern ba Send-e yek-handler ast."
-
----
-
-# BAKHSH-E DOVOM — hamin mafhoom to Dejban
+## Hala dar Dejban
 
 Subject-e domain `Entity` ast. `Dejban.Common.Domain/Entity.cs`.
 
-- List **private** ast. Birun `Attach`-e dasti-e event-e ja'li nemikonad
-- `Raise` **protected** ast. Faghat method-e khod-e entity. In be jaye `Notify`-e haman lahze neshast, vali **seda nemizanad**. Faghat be list ezafe mikonad
-- `DomainEvents` read-only ast ta birun bekhanad
-- `ClearDomainEvents` public ast ta infrastructure ba'd az bardashtan-e list, an ra khali konad va dobare khabar nadeh
+- List private ast. Birun event-e ja'li ezafe nemikonad
+- `Raise` protected ast. Faghat method-e khode mowjudiat. Kasi ra seda nemizanad. Faghat be list ezafe mikonad
+- `DomainEvents` read-only ast
+- `ClearDomainEvents` public ast ta infrastructure bad az bardashtan-e list, an ra khali konad va dobare khabar nadahad
 
-Pas shekl-e ma **deferred** ast, na GoF-e haman-lahze. `personnel.SoftDelete()` event ra to memory mirizad. Handler-e anbar va module-ye digar hanooz khab-and. Ta `SaveChanges` commit nashavad, kasi haq-e asar-e khareji nadarad.
+Pas khabar-e ma ba'd az commit ast, na haman lahze. `SoftDelete` event ra to memory mirizad. Ta `SaveChanges` commit nashavad, kasi haq-e asar-e khareji nadarad.
 
-Shenavande-ha `IDomainEventHandler<T>` hastand. Attach-e `+=` nist. "Man subscribe-am" ya'ni class-at in interface ra implement karde va to assembly-e haman module hast. `DomainEventHandlersFactory` an-ha ra payda mikonad. Chand handler baraye yek event ghanuni ast. Inja farq ba `ISender.Send` roshan mishavad: Send yek handler, event chand ta.
+Shenavande-ha `IDomainEventHandler<T>` hastand. `+=` nist. "Man subscribe-am" yani class-at in interface ra piyade karde va to assembly-e haman module hast. `DomainEventHandlersFactory` an-ha ra peyda mikonad. Chand handler baraye ye event ghanuni ast. Farq ba `Send`: Send ye handler, event chand ta.
 
-Push ast: khod-e `IDomainEvent` dade ra haml mikonad. Handler be instance-e zende-ye entity-e nime-kar vast nist.
+Push ast: khode event dade ra haml mikonad.
 
-Do sath-e khabar, do marz:
+Do sath-e khabar:
 
 | | Domain event | Integration event |
 |---|---|---|
 | Mahdude | haman module | beyn-e module |
-| Zaman | ba commit, to outbox | ba'd, rooye bus |
+| Zaman | ba commit, to outbox | bad, ru bus |
 | Shenavande | `IDomainEventHandler<T>` | `IIntegrationEventHandler<T>` |
 
-Aggregate integration event ra `Raise` nemikonad. Aggregate faghat domain event mishenasad. Yek domain-handler mitavanad ba'dan integration event besazad. In joda'i jeloye vast shodan-e entity be Rabbit ra migirad. Haman ghanun-e "subject concrete-e hame-ye shenavande-haye jahan ra nemishnasad".
+Aggregate integration event ra `Raise` nemikonad. Ye domain-handler mitavanad badan integration event besazad. `UnitCreated` ke Visitors va Vehicles mishnavand integration ast, na `Raise`-e dakhel-e entity.
 
-`UnitCreated` ke Visitors, Vehicles, WeighBridge va SecurityPatrols mishanavand integration ast, na `Raise`-e dakhel-e entity-e Personnels.
+Pushesh-e idempotent dor-e handler neshaste. An joz'-e observer nist. Joz'-e tahvil-e hadaghal-yek-bar ast. Ketab farz mikonad khabar ye bar-e dakheli seda mishavad. Bus in farz ra nadarad.
 
-Decorator-e idempotent dor-e handler neshast. An joz'-e observer nist. Joz'-e tahvil-e at-least-once ast. Observer-e kitab farz mikonad `Notify` yek bar-e daroni seda mishavad. Bus in farz ra nadarad.
+## Agar beporsand, in tor begou
 
----
+> Observer yani ye subject, chand shenavande, bedune esm-e class-e shenavande dakhel-e subject. Khabar-e ketab haman lahze ast. To database an ra ta bad az commit aghab mindazim, vagarna email-e rollback-shode miferestim. Dejban hamin kar ra mikonad: `Raise` faghat list-e private ra por mikonad. Factory bad az outbox hame-ye handler-haye an type ra seda mizanad. Chand handler mojaz ast. In Send nist. Domain event az module birun nemiravad. Khabar-e beyn-e module integration event-e joda ast.
 
-## Script-e 90 sanie
-
-> "Observer ya'ni yek subject, chand shenavande, bedune esm-e concrete-e shenavande dakhel-e subject. Notify-e ketab haman lahze ast. To business-e database an ra aghab mindazim ta commit, vagarna email-e rollback-shode miferestim. Dejban hamin kar ra mikonad: `Raise` faghat list-e private ra por mikonad va protected ast ta faghat method-e entity event besazad. Factory ba'd az outbox hame-ye `IDomainEventHandler` haye an type ra seda mizanad. Chand handler mojaz ast. In Send-e MediatR nist. Domain event az module birun nemiravad. Khabar-e beyn-e module integration event-e joda ast."
-
----
-
-## 10 soal
+## Dah so'al
 
 **1. Subject che chizi ra nabayad beshnasad?**
-Class-e concrete-e observer. Faghat interface, ya faghat "list-e shenavande-ye in type".
+Class-e moshakhas-e gush-dahande. Faghat list ya interface.
 
 **2. Push va pull?**
-Push dade ra ba khabar mifrestad. Pull faghat migooyad "avaz shodam" va observer khodesh mikhanad. Event-e sabet-e push baraye joda'i-e laye behtar ast.
+Push dade ra ba khabar mifrestad. Pull faghat miguyad avaz shodam va gush-dahande khodesh mikhanad.
 
-**3. Chera Notify-e haman lahze ba database khatar ast?**
-Asar-e observer mitavanad qabl az rollback-e transaction anjam shavad.
+**3. Chera khabar-e haman lahze ba database khatar ast?**
+Asar-e gush-dahande mitavanad ghabl az rollback anjam shavad.
 
-**4. Deferred event hanuz observer ast?**
-Bale. Chand shenavande, subject an-ha ra be esm nemishnasad. Faghat zaman-e Notify avaz shode.
+**4. Khabar-e ba'd az commit hanuz observer ast?**
+Bale. Chand shenavande, subject an-ha ra be esm nemishnasad. Faghat zaman-e khabar avaz shode.
 
 **5. Memory leak-e in pattern kojast?**
-Attach bedune Detach rooye subject-i ke az observer bishtar zende mimanad.
+Subscribe bedune unsubscribe ru subject-i ke az gush-dahande bishtar zende mimanad.
 
-**6. Tartib-e observer-ha gharanti ast?**
-Na, magar sanad karde bashi. Shenavande-ha bayad mostaghel bashand.
+**6. Tartib-e gush-dahande-ha gharanti ast?**
+Na, magar neveshte bashi. Bayad mostaghel bashand.
 
-**7. Farq ba `Send`?**
-Send yek handler va yek javab-e lazem. Observer chand shenavande va subject montazer-e javab-e yek-i az an-ha nist.
+**7. Farq ba Send?**
+Send ye handler va ye javab-e lazem. Observer chand shenavande va subject montazer-e javab-e yeki az an-ha nist.
 
 **8. `Raise` to Dejban chand nafar ra haman lahze seda mizanad?**
-Hich-kas ra. Faghat be list-e dakheli-e entity ezafe mikonad.
+Hich-kas ra. Faghat be list-e dakheli ezafe mikonad.
 
 **9. Chera list private va `Raise` protected ast?**
-Ta application event-e ja'li ezafe nakonad va event faghat az taghir-e ghanuni-e entity sakhte shavad.
+Ta application event-e ja'li ezafe nakonad va event faghat az taghir-e ghanuni-ye mowjudiat sakhte shavad.
 
 **10. Domain event va integration event?**
-Avvali shenavande-ye haman module, hamrah-e commit. Dovomi gharardad-e beyn-e module rooye bus. Entity dovomi ra nemishnasad.
+Avvali shenavande-ye haman module, hamrah-e commit. Dovomi gharardad-e beyn-e module ru bus. Entity dovomi ra nemishnasad.
