@@ -42,7 +42,7 @@
       min-height: 297mm;
       margin: 0 auto 28px;
       background: #fff;
-      padding: 17mm 18mm 15mm;
+      padding: 14mm 16mm 12mm;
       box-shadow: 0 2px 18px rgba(0,0,0,.18);
     }
 
@@ -52,7 +52,7 @@
       grid-template-columns: 1.15fr auto 1fr;
       align-items: center;
       column-gap: 22px;
-      margin-bottom: 24px;
+      margin-bottom: 18px;
     }
 
     .name-block { text-align: left; }
@@ -121,7 +121,7 @@
     }
 
     /* Sections */
-    section { margin-bottom: 20px; }
+    section { margin-bottom: 15px; }
 
     .sec-title {
       font-family: Montserrat, Inter, Arial, sans-serif;
@@ -140,13 +140,13 @@
     }
 
     .summary {
-      font-size: 10.5pt;
+      font-size: 10pt;
       color: #2a2a2a;
       line-height: 1.6;
       text-align: left;
     }
 
-    .entry { margin-bottom: 14px; }
+    .entry { margin-bottom: 10px; }
     .entry:last-child { margin-bottom: 0; }
 
     .entry-head {
@@ -174,9 +174,9 @@
       padding-left: 18px;
     }
     .entry li {
-      margin-bottom: 4px;
-      font-size: 10.5pt;
-      line-height: 1.5;
+      margin-bottom: 3px;
+      font-size: 9.7pt;
+      line-height: 1.42;
       color: #2a2a2a;
     }
     .entry li::marker { color: #555; }
@@ -185,8 +185,8 @@
     .skill-row {
       display: flex;
       gap: 14px;
-      margin-bottom: 7px;
-      font-size: 10.5pt;
+      margin-bottom: 5px;
+      font-size: 9.7pt;
       line-height: 1.5;
       color: #2a2a2a;
     }
@@ -262,7 +262,7 @@
       <h2 class="sec-title">Summary</h2>
       <hr class="divider" />
       <p class="summary">
-        Full-stack developer building enterprise access-control software with C# / ASP.NET Core and React / Next.js. Focused on clean, event-driven backends and maintainable multi-app frontends.
+Full-stack developer experienced in building enterprise applications across both backend and frontend. Works with C# / ASP.NET Core, secure REST APIs, CQRS-based services, and PostgreSQL, alongside React / Next.js interfaces, shared UI patterns, and real-time features. Focused on delivering maintainable features that connect reliable services with practical user experiences.
       </p>
     </section>
 
@@ -276,11 +276,12 @@
           <div class="dates">2023 – Present</div>
         </div>
         <ul>
-          <li>Built full-stack features for an access-control platform (.NET + React); shipped via Docker and GitLab CI</li>
-          <li>Designed backend services with CQRS / DDD and event-driven messaging (MassTransit, RabbitMQ, Transactional Outbox/Inbox)</li>
-          <li>Designed versioned REST APIs behind a YARP gateway with secure cross-origin auth (HttpOnly refresh cookie + Bearer token, silent refresh) and standardized ProblemDetails errors</li>
-          <li>Delivered realtime features (SignalR) and role-based access across a multi-app Turborepo frontend (Next.js, MUI, TanStack Query)</li>
-          <li>Integrated a Stimulsoft-based reporting microservice into the Next.js / MUI frontend</li>
+          <li>Deliver full-stack features for the Dejban enterprise access-control platform using ASP.NET Core and React / Next.js, with containerized delivery supported by Docker and GitLab CI.</li>
+          <li>Built the DCC (Document Control Center) service end to end for the Bank Mellat project, covering API design, file lifecycle workflows, metadata persistence, and storage integration.</li>
+          <li>Implemented file upload, download, metadata retrieval, soft deletion, restoration, and permanent deletion using ASP.NET Core, CQRS, MediatR, and FluentValidation.</li>
+          <li>Connected PostgreSQL / EF Core metadata storage with filesystem-based file storage, and implemented JWT-protected endpoints with file-access checks.</li>
+          <li>Developed multi-app frontend features with React / Next.js, MUI, TanStack Query, and Turborepo; delivered real-time functionality with SignalR and role-based access.</li>
+          <li>Designed versioned REST APIs behind a YARP gateway, standardized API errors with ProblemDetails, integrated Stimulsoft reporting into the frontend, and worked with RabbitMQ / MassTransit messaging infrastructure.</li>
         </ul>
       </div>
 
@@ -290,7 +291,7 @@
           <div class="dates">Ongoing</div>
         </div>
         <ul>
-          <li>Designed and developed a corporate super-portal end to end (kadooseng.com)</li>
+          <li>Designed and developed a corporate web portal end to end, applying full-stack development skills across the application (kadooseng.com).</li>
         </ul>
       </div>
     </section>
@@ -312,10 +313,11 @@
     <section>
       <h2 class="sec-title">Key Skills</h2>
       <hr class="divider" />
-      <div class="skill-row"><b>Backend</b><span>C# / ASP.NET Core, EF Core, PostgreSQL, CQRS / MediatR / DDD, YARP, JWT / Identity</span></div>
+      <div class="skill-row"><b>Backend</b><span>C#, ASP.NET Core, REST APIs, EF Core, PostgreSQL, CQRS, MediatR, FluentValidation, DDD, YARP, JWT / Identity</span></div>
+      <div class="skill-row"><b>Frontend</b><span>JavaScript, TypeScript, React, Next.js, MUI, TanStack Query, React Hook Form, Zod, Zustand, Turborepo</span></div>
       <div class="skill-row"><b>Messaging &amp; Realtime</b><span>MassTransit, RabbitMQ, Redis, SignalR</span></div>
-      <div class="skill-row"><b>Frontend</b><span>React, Next.js, TypeScript, MUI, TanStack Query, React Hook Form, Zod, Zustand, Turborepo</span></div>
-      <div class="skill-row"><b>DevOps</b><span>Docker</span></div>
+      <div class="skill-row"><b>Delivery &amp; Tooling</b><span>Docker, GitLab CI, Stimulsoft Reporting</span></div>
+      <div class="skill-row"><b>AI-Assisted Development</b><span>OpenAI Codex, Cursor, ChatGPT — codebase exploration, implementation assistance, debugging, and refactoring</span></div>
     </section>
   </article>
 
