@@ -1,53 +1,66 @@
-# Observability: لاگ، تریس، health و متریک gateway
+# Observability: Serilog، OpenTelemetry و استک Grafana (Loki / Tempo / Prometheus / Alloy)
 
 شناسهٔ کاتالوگ: `20-observability`.
 
-ارجاع: [01-dotnet-aspnetcore](01-dotnet-aspnetcore.md)، [03-docker-compose](03-docker-compose.md)، [04-yarp](04-yarp.md)، [11-messaging](11-messaging.md)، [19-redis](19-redis.md)، [00-project-discovery](00-project-discovery.md).
+ارجاع: [01-dotnet-aspnetcore](01-dotnet-aspnetcore.md)، [02-configuration](02-configuration.md)، [03-docker-compose](03-docker-compose.md)، [04-yarp](04-yarp.md)، [11-messaging](11-messaging.md)، [19-redis](19-redis.md)، [00-project-discovery](00-project-discovery.md).
 
-اپ، Seq، Jaeger، و OTLP collector در این فاز اجرا نشدند. سرویس‌های Seq/Jaeger در Compose توسعه **comment** هستند. مقدار secret نقل نمی‌شود.
+این سند در **2026-11-01** با کد و Compose فعلی و با probe زندهٔ کانتینرهای observability دوباره نوشته شد. Aspire از محدودهٔ این درس خارج است و جایگزین مشاهده‌پذیری محلی نیست. مقدار رمز Grafana یا connection string نقل نمی‌شود.
 
-درس‌های `17-reporting` و `18-mediamtx-baskool` خارج از محدوده می‌مانند؛ اگر نام Reporting در health/gateway دیده شود فقط به‌خاطر مسیر موجود کد است.
+وضعیت کلی پس از wiring در **2026-11-01**: زیرساخت Compose + helper مشترک OTEL/Serilog OTLP + datasource Grafana provision شده است. مسیر کد برای trace/metric/log به Alloy وصل است؛ دیدن داده در UI هنوز به اجرای سرویس‌ها و ترافیک واقعی وابسته است.
 
-## 1. اهداف درس
+## 1. مسئله
 
-- دیدن اینکه «مشاهده‌پذیری» در این مخزن عملاً یعنی چه: Serilog، health دژبان، OTEL فقط روی دژبان، متریک in-process در gateway.  
-- تفکیک آنچه ثبت شده از آنچه در Compose واقعاً بالا نیست.  
-- ردیابی یک درخواست از middleware لاگ تا exception handler.  
-- شناخت فیلتر نویز outbox و محدودیت‌های cross-service tracing.
+در سامانه‌ای با چند پردازه (Gateway، Identity، Dejban، ACL، …) وقتی یک درخواست fail می‌شود، باید بتوانی بگویی:
 
-## 2. Observability در این مخزن یعنی چه؟
+1. کدام سرویس‌ها در مسیر بودند؟
+2. کدام لاگ‌ها به همان درخواست مربوط‌اند؟
+3. زمان و نرخ خطا چقدر بوده؟
 
-بدون داشبورد ابری واحد، تیم باید بداند: درخواست کجا شکست خورد، SQL/پیام تکراری لاگ را خفه نکند، وابستگی Postgres/Redis سالم است یا نه، و کدام مسیر API روی gateway فشار می‌آورد.
+بدون استاندارد مشترک، هر سرویس فایل لاگ جدا می‌نویسد و تریس بین سرویس‌ها گم می‌شود. OpenTelemetry همان استاندارد جمع‌آوری است. Grafana و پشت‌صحنه‌اش (Loki، Tempo، Prometheus، Alloy) محل ذخیره و دیدن آن داده هستند. Serilog همچنان مسیر لاگ ساختاریافتهٔ خود اپ است؛ این دو لایه باید به هم وصل شوند، وگرنه داشبورد خالی می‌ماند.
 
-پیاده‌سازی تأییدشده چند لایهٔ جداست، نه یک پلتفرم کامل:
+## 2. نقشهٔ کلی ابزارها
 
-| لایه | کجا | وضعیت |
+| ابزار | نقش عمومی | نقش در این مخزن (شاهد) |
 |---|---|---|
-| Structured logging (Serilog) | اکثر microserviceها + دژبان؛ خواندن از Configuration | فعال در کد |
-| Request logging | `UseSerilogRequestLogging` در hostهایی مثل Identity/DCC/… و دژبان | فعال در کد |
-| TraceId در LogContext | فقط دژبان `LogContextTraceLoggingMiddleware` | فعال در کد |
-| OpenTelemetry tracing + OTLP | فقط مسیر `InfrastructureConfiguration` دژبان | ثبت شده؛ مقصد در Compose comment |
-| Health checks | `Dejban.Api` → Npgsql + Redis | فعال در کد |
-| API pressure metrics | gateway `RequestMetricsStore` in-memory | فعال در کد؛ نه Prometheus |
-| Seq / Jaeger containers | `docker-compose.development.yml` | comment → سرویس فعال نیست |
+| OpenTelemetry | API/SDK برای traces، metrics، logs | tracing فقط در `Dejban.Common.Infrastructure` با `AddOtlpExporter` |
+| Grafana Alloy | دریافت OTLP و forward به بک‌اندها | سرویس `alloy` در Compose؛ `Observability/alloy/config.alloy` |
+| Loki | ذخیره و جست‌وجوی لاگ | سرویس `loki` + `Observability/loki/loki-config.yaml` |
+| Tempo | ذخیره trace | سرویس `tempo` + `Observability/tempo/tempo.yaml` |
+| Prometheus | ذخیره متریک | سرویس `prometheus` + remote-write فعال + `Observability/prometheus/prometheus.yml` |
+| Grafana | UI داشبورد و Explore | سرویس `grafana`؛ **datasource provision نشده** |
+| Serilog | لاگ داخل پردازهٔ .NET | تقریباً همهٔ microserviceها؛ sink اصلی Console + Seq در GlobalAppsettings |
+| Seq / Jaeger | مقصد قدیمی لاگ/تریس | بلوک Compose همچنان comment؛ جایگزین عملی Alloy+Grafana است ولی config اپ هنوز به Seq/Jaeger اشاره دارد |
 
-جستجوی `AddOpenTelemetry` خارج از `Dejban.Common.Infrastructure` در این فاز به همان مسیر دژبان محدود بود. Gateway اصلاً `UseSerilog` ندارد.
+```mermaid
+flowchart LR
+  subgraph apps [پردازه های NET]
+    D[Dejban.Api OTEL traces]
+    O[سایر سرویس ها فعلا بدون AddOpenTelemetry]
+    S[Serilog Console و Seq]
+  end
+  subgraph stack [Compose observability]
+    A[Alloy :4317/:4318]
+    L[Loki]
+    T[Tempo]
+    P[Prometheus]
+    G[Grafana]
+  end
+  D -->|OTLP| A
+  O -.->|هنوز وصل نیست| A
+  S -.->|به Loki نمی رود| L
+  A -->|otlp exporter| T
+  A -->|exporter loki| L
+  A -->|remote_write| P
+  G -.->|datasource دستی لازم| L
+  G -.->|datasource دستی لازم| T
+  G -.->|datasource دستی لازم| P
+```
 
-## 3. بسته‌ها
+خط‌چین یعنی مسیر در کد یا provisioning کامل نیست.
 
-| بسته | نسخه (`Directory.Packages.props`) |
-|---|---|
-| `Serilog` | 4.3.0 |
-| `Serilog.AspNetCore` | 10.0.0 |
-| `Serilog.Sinks.Console` / `File` / `Seq` | 6.1.1 / 7.0.0 / 9.0.0 |
-| `OpenTelemetry.Extensions.Hosting` / `Exporter.OpenTelemetryProtocol` | 1.15.3 |
-| Instrumentation AspNetCore / Http / EF / Redis / Npgsql | 1.15.x مطابق props |
-| `AspNetCore.HealthChecks.NpgSql` / `Redis` / `UI.Client` | 9.0.0 |
-| `AspNetCore.HealthChecks.Uris` | 9.0.0 در csproj Infra — **فراخوانی `AddUrlGroup`/`AddUri` در کد دژبان دیده نشد** |
+## 3. آنچه در اپ ثبت شده (کد)
 
-## 4. Logging با Serilog
-
-### ثبت
+### 3.1 Serilog
 
 الگوی رایج hostها (Identity، RequestTracker، ACL، DCC، Gate، Dejban، …):
 
@@ -57,204 +70,265 @@ builder.Host.UseSerilog((context, loggerConfig) =>
     .Filter.ByExcluding(/* commandText شامل OutboxState/InboxState/OutboxMessage */));
 ```
 
-و در pipeline: `app.UseSerilogRequestLogging()`.
+و در pipeline معمولاً `app.UseSerilogRequestLogging()`.
 
-Gateway: بدون Serilog package/usage در جستجوی cs/csproj — از logging پیش‌فرض ASP.NET + `ILogger` در middlewareها استفاده می‌کند. وضعیت: `source-verified`.
+پیکربندی از `GlobalAppsettings/globalAppsettings*.json`:
 
-### پیکربندی
+- `Using`: Console، File، Seq
+- `WriteTo`: Console و Seq (`serverUrl` مثل `http://localhost:5341`)
+- Override سطح Warning برای namespaceهای Outbox/Inbox ماژول‌های دژبان
+- Enrich: FromLogContext، WithMachineName، WithThreadId
 
-بخش اصلی در `GlobalAppsettings/globalAppsettings*.json`:
+**شاهد مهم:** هیچ sink یا exporter لاگ به سمت Alloy/Loki در کد خوانده‌شده نیست. پس حتی اگر Loki و Grafana بالا باشند، لاگ اپ به‌صورت پیش‌فرض وارد Loki نمی‌شود مگر اینکه بعداً `OpenTelemetry` logging exporter یا sink OTLP/Loki برای Serilog اضافه شود.
 
-- `Using`: Console، File، Seq  
-- `MinimumLevel` Information؛ Override برای namespaceهای Outbox/Inbox هر ماژول دژبان → Warning  
-- `WriteTo`: Console و Seq (`serverUrl` مثلاً `http://localhost:5341`) — **Sink File در Using هست ولی در بلوک WriteTo خوانده‌شده نیست**  
-- `Enrich`: FromLogContext، WithMachineName، WithThreadId  
-- هر سرویس در appsettings خودش معمولاً فقط `Serilog:Properties:Application` را ست می‌کند  
+Gateway در جستجوی این فاز `UseSerilog` ندارد؛ از logging پیش‌فرض ASP.NET و `ILogger` در middleware استفاده می‌کند.
 
-فیلتر کد روی property `commandText` نویز SQL مربوط به جداول outbox/inbox MassTransit/EF را کم می‌کند (مکمل Override سطح Warning برای jobهای Quartz outbox دژبان).
+### 3.2 OpenTelemetry tracing (فقط دژبان)
 
-### TraceId در لاگ دژبان
+در `Microservices/Dejban/Common/Dejban.Common.Infrastructure/InfrastructureConfiguration.cs`:
 
-`LogContextTraceLoggingMiddleware`: اگر `Activity.Current` باشد، `LogContext.PushProperty("TraceId", traceId)`. بعد `UseSerilogRequestLogging` می‌آید. بدون Activity (مثلاً قبل از ساخت span یا خارج از instrumentation) مقدار null ممکن است. وضعیت: `source-verified` کد؛ پر شدن واقعی Activity با OTLP زنده: `runtime verification pending`.
+1. `AddOpenTelemetry().ConfigureResource(... AddService(serviceName))` با `DiagnosticsConfig.ServiceName = "Dejban.Api"`
+2. `WithTracing`: AspNetCore، HttpClient، EntityFrameworkCore، Redis، Npgsql، و source MassTransit
+3. `tracing.AddOtlpExporter()`
+4. **`WithMetrics` نیست** → مسیر metrics در Alloy برای متریک اپ خالی می‌ماند مگر منبع دیگری بفرستد
 
-## 5. OpenTelemetry (فقط دژبان)
+جستجوی `AddOpenTelemetry` خارج از این Infra به همان مسیر دژبان محدود بود. Identity، ACL، Gateway، DCC، Reporting و بقیه در این فاز exporter OTEL ندارند.
 
-در `InfrastructureConfiguration.AddInfrastructure`:
+کلید مقصد:
 
-1. `AddOpenTelemetry().ConfigureResource(r => r.AddService(serviceName))` با `DiagnosticsConfig.ServiceName = "Dejban.Api"`.  
-2. `WithTracing`: AspNetCore، HttpClient، EF Core، Redis، Npgsql، و `AddSource(MassTransit.Logging.DiagnosticHeaders.DefaultListenerName)`.  
-3. `AddOtlpExporter()` — بدون `WithMetrics` در همین بلوک.
+| فایل | مقدار کلید `OTEL_EXPORTER_OTLP_ENDPOINT` |
+|---|---|
+| `globalAppsettings.Development.json` | `http://localhost:4317` (= پورت host مربوط به Alloy در Compose development) |
+| `globalAppsettings.DockerDevelopment.json` / `Docker.json` | `http://jaeger:4317` (**سرویس Jaeger در Compose comment است؛ باید به hostname سرویس Alloy اشاره کند اگر داخل شبکه Docker باشی**) |
+| `globalAppsettings.Production.json` | `http://localhost:4317` |
 
-کلید پیکربندی `OTEL_EXPORTER_OTLP_ENDPOINT` در GlobalAppsettings (مثلاً `http://localhost:4317` یا `http://jaeger:4317`). SDK معمولاً این متغیر محیطی را می‌خواند؛ اینکه در همهٔ محیط‌های deploy به‌صورت env تزریق می‌شود یا فقط از JSON لود می‌شود: بخشی از bind JSON `source-verified` وجود کلید؛ اثر runtime exporter: `runtime verification pending`.
+SDK معمولاً این env/config را برای OTLP می‌خواند. اثر واقعی وقتی Dejban با Development روی host اجرا شود و Alloy روی `4317` publish شده باشد، محتمل است؛ وقتی کانتینر اپ به `jaeger` اشاره کند، مقصد مرده است. وضعیت: کلیدها `source-verified`؛ رسیدن span به Tempo وابسته به اجرای Dejban + endpoint درست است.
 
-**نبود:** collector فعال در Compose فعلی (Jaeger comment)، tracing روی Identity/ACL/Gateway، metrics OTEL، داشبورد در مخزن.
+### 3.3 TraceId در لاگ دژبان
 
-## 6. Health checks
+`LogContextTraceLoggingMiddleware` اگر `Activity.Current` باشد `TraceId` را به `LogContext` می‌فرستد. این correlation داخل لاگ Serilog است، نه جایگزین ارسال لاگ به Loki.
 
-فقط مسیر خوانده‌شدهٔ `Dejban.Api/Program.cs`:
+### 3.4 Health و متریک gateway
 
-- `AddHealthChecks().AddNpgSql(databaseConnectionString).AddRedis(redisConnectionString)`  
-- `MapHealthChecks("health", ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse)`  
+- دژبان: `AddHealthChecks().AddNpgSql(...).AddRedis(...)` و `MapHealthChecks("health", ...)`
+- Gateway: `RequestMetricsMiddleware` + `RequestMetricsStore` in-memory و endpoint snapshot با Authorize — **Prometheus نیست** و با restart صفر می‌شود
+- Gateway: `ProxyErrorHandlingMiddleware` برای 502/500 پروکسی
 
-Gateway: `GET /health/reporting-routes` وضعیت کلیدهای پیکربندی Reporting در configuration را چک می‌کند (نه Postgres)؛ اشارهٔ مختصر، بدون ورود به درس Reporting. همچنین `GET /api/v1/gateway/request-metrics` با Authorize برای snapshot فشار API.
+## 4. آنچه در Compose و Observability/ اضافه شده
 
-Identity و چند سرویس دیگر در جستجوی این فاز `AddHealthChecks` نداشتند.
+### 4.1 سرویس‌ها (`docker-compose.yml`)
 
-## 7. Exception handling و مشاهدهٔ خطا
+| سرویس | Image (در فایل) | نقش |
+|---|---|---|
+| `loki` | `grafana/loki:3.7.0` | لاگ |
+| `tempo` | `grafana/tempo:2.7.2` | تریس |
+| `prometheus` | `prom/prometheus:v3.5.0` با `--web.enable-remote-write-receiver` | متریک |
+| `alloy` | `grafana/alloy:v1.8.3` | گیرنده OTLP و forward |
+| `grafana` | `grafana/grafana:11.5.2` | UI |
 
-### دژبان
+Volumeها: `grafana-data`، `loki-data`، `tempo-data`، `prometheus-data`.
 
-- `AddExceptionHandler<GlobalExceptionHandler>` + `AddProblemDetails` با extension `requestId` = `TraceIdentifier`.  
-- Handler: `InvalidParameterException` / `BadHttpRequestException` با LogWarning؛ بقیه LogError و ProblemDetails 500؛ Detail پیام exception فقط در Development / DockerDevelopment.  
-- `UseExceptionHandler()` در pipeline قبل از LogContext.
+### 4.2 پورت‌های development (`docker-compose.development.yml`)
 
-### سرویس‌های سه‌لایه (نمونه DCC)
+| سرویس | پورت host |
+|---|---|
+| Loki | `3100` |
+| Tempo | `3200` |
+| Prometheus | `9090` |
+| Alloy | `4317` (gRPC)، `4318` (HTTP)، `12345` (UI Alloy) |
+| Grafana | `3000` |
 
-`GlobalExceptionHandler` با `IProblemDetailsService`؛ Status 500؛ Detail = `exception.Message` — الگوی ساده‌تر؛ لاگ صریح در همان handler دیده نشد (ممکن است جای دیگر لاگ شود).
+Seq و Jaeger هنوز در همان فایل **comment** مانده‌اند.
 
-### Gateway
+### 4.3 Alloy (`Observability/alloy/config.alloy`)
 
-`ProxyErrorHandlingMiddleware`: بعد از next، اگر پاسخ 502/500 باشد، cluster را از YARP feature می‌خواند، LogWarning می‌زند، برای browser به `/error/503?system=…` redirect و برای API پاسخ دوستانه می‌نویسد. Exception داخل middleware دوباره throw می‌شود بعد از LogError.
+جریان تأییدشده از فایل:
 
-## 8. متریک فشار API روی gateway
+1. `otelcol.receiver.otlp` روی `0.0.0.0:4317` و `:4318`
+2. `otelcol.processor.batch`
+3. logs → `otelcol.exporter.loki` → `loki.write` به `http://loki:3100/loki/api/v1/push`
+4. traces → `otelcol.exporter.otlp` به `tempo:4317` با `tls.insecure = true`
+5. metrics → `otelcol.exporter.prometheus` → `prometheus.remote_write` به `http://prometheus:9090/api/v1/write`
 
-`RequestMetricsMiddleware` فقط متدهای رایج روی مسیرهای `/api/` را زمان می‌گیرد (بدون scalar/health/static). `RequestMetricsStore` in-process: نرمال‌سازی GUID/عدد به `{id}`، سقف حدود 2000 bucket، snapshot با sort روی avg/count/max/errors.
+این پیکربندی برای **جمع‌آوری OTLP** درست است. خودش داده تولید نمی‌کند؛ اگر اپ trace/metric/log نفرستد، بک‌اندها خالی می‌مانند.
 
-این Prometheus/OTLP metrics نیست؛ با restart gateway صفر می‌شود. وضعیت: `source-verified`.
+### 4.4 Loki
 
-## 9. مسیر end-to-end تأییدشده (درخواست به دژبان)
+`auth_enabled: false`، filesystem storage، schema v13/tsdb، `allow_structured_metadata: true`، `path_prefix: /loki`. URL push Alloy با این prefix جور است.
+
+### 4.5 Tempo
+
+دریافت OTLP روی 4317/4318 داخل کانتینر، storage محلی، retention compaction ۲۴ ساعت. برای Explore در Grafana معمولاً datasource Tempo به `http://tempo:3200` لازم است (هنوز provision نشده).
+
+### 4.6 Prometheus
+
+فقط job `prometheus` خودش را scrape می‌کند. متریک اپ باید از طریق remote_write Alloy بیاید. چون اپ‌ها `WithMetrics` ندارند، انتظار متریک business از .NET فعلاً واقع‌بینانه نیست.
+
+### 4.7 Grafana
+
+کاربر ادمین از env؛ پسورد از `GRAFANA_ADMIN_PASSWORD` با پیش‌فرض در Compose. **هیچ فایل `provisioning/datasources` در `Observability/` دیده نشد.** بدون datasource دستی، Explore برای Loki/Tempo/Prometheus دادهٔ اپ را نشان نمی‌دهد حتی اگر داده در بک‌اند باشد.
+
+## 5. Runtime verification (2026-11-01)
+
+کانتینرها در زمان بررسی بالا بودند: `alloy`، `prometheus`، `grafana`، `loki`، `tempo`.
+
+| بررسی | نتیجه |
+|---|---|
+| Alloy log startup | receiver OTLP روی 4317/4318 listen؛ بدون error گراف |
+| `http://localhost:3100/ready` | `ready` |
+| `http://localhost:3200/ready` | `ready` |
+| Prometheus targets | فقط scrape خود Prometheus healthy |
+| Tempo `api/search?limit=5` | `"traces":[]` — تریس اپ ذخیره نشده |
+| Loki labels | چند label عمومی (`exporter`, `job`, `service_name`)؛ نشانهٔ پر بودن لاگ اپ نیست |
+| متریک‌های Prometheus | عمدتاً `go_*` خود Prometheus |
+| Grafana API datasources با admin پیش‌فرض | 401 در این محیط (رمز یا auth متفاوت؛ به‌هرحال provision در repo نیست) |
+
+جمع‌بندی runtime: **استک زنده است، pipeline Alloy load شده، ولی دادهٔ اپ (trace دژبان / لاگ / متریک) در Tempo/Loki/Prom به‌عنوان مسیر کامل تأیید نشد.**
+
+## 6. شکاف‌ها — چرا Grafana / Tempo خالی به نظر می‌رسد
+
+| شکاف | اثر | شاهد |
+|---|---|---|
+| فقط Dejban `AddOpenTelemetry` دارد | Identity/ACL/Gateway در Tempo span نمی‌سازند | جستجوی `AddOpenTelemetry` |
+| نبود `WithMetrics` | Alloy چیزی برای Prometheus از اپ نمی‌گیرد | بلوک tracing-only در Infra |
+| Serilog → Seq، نه OTLP logs | Loki از لاگ اپ تغذیه نمی‌شود | GlobalAppsettings WriteTo Seq |
+| Docker OTEL هنوز `jaeger` | کانتینر اپ به collector مرده می‌زند | `globalAppsettings.Docker*.json` |
+| Grafana بدون datasource provision | UI به Loki/Tempo/Prom وصل نیست مگر دستی | نبود فایل provisioning |
+| Seq در Compose خاموش | sink Seq هم مقصد زنده‌ای ندارد مگر Seq جدا بالا باشد | comment در development compose |
+
+پس «OpenTelemetry فعال شده؟» پاسخ دقیق:
+
+- **SDK tracing در Dejban: بله، در کد ثبت شده.**
+- **Collector محلی Alloy: بله، کانتینر و پورت 4317 بالا است.**
+- **مسیر end-to-end تا Tempo در Grafana: هنوز کامل نیست** تا Dejban واقعاً به Alloy بفرستد، span ساخته شود، و Grafana datasource Tempo داشته باشد.
+- **Metrics و Logs مسیر LGTM: هنوز فعال به معنی محصولی نیستند.**
+
+## 7. مزیت این مدل برای local (نسبت به Seq/Jaeger جدا یا Aspire)
+
+وقتی مسیر کامل شود، برای توسعهٔ محلی این‌ها را می‌دهد که Compose قدیمی comment‌شده نمی‌داد:
+
+1. **یک UI (Grafana)** برای لاگ + تریس + متریک به‌جای چند ابزار جدا.
+2. **Correlation:** از یک span در Tempo به لاگ هم‌`trace_id` در Loki (بعد از اینکه لاگ هم OTLP/structured بفرستد).
+3. **همان قرارداد OTLP** که بعداً در staging/production هم قابل تکرار است؛ AppHost Aspire فقط برای orchestration لوکال بود و جایگزین این استک ذخیره نیست.
+4. **جست‌وجوی لاگ چندسرویسی** در Loki وقتی همه سرویس‌ها لاگ را به Alloy برسانند.
+5. **متریک درخواست/خطا** در Prometheus وقتی `WithMetrics` و instrumentation اضافه شود؛ امروز متریک gateway هنوز in-process است.
+
+آنچه **نمی‌دهد** تا wiring تمام شود: دیدن خودکار همهٔ سرویس‌ها، جایگزین Serilog Console برای debug روزمره، یا متریک CPU کانتینر بدون exporter جدا.
+
+## 8. مسیر هدف end-to-end (وقتی کامل شود)
 
 ```mermaid
 sequenceDiagram
-  participant C as Client
+  participant UI as Client
   participant GW as ApiGateway
   participant D as Dejban.Api
-  participant S as Serilog
-  participant O as OTEL Tracer optional
+  participant A as Alloy
+  participant T as Tempo
+  participant L as Loki
+  participant P as Prometheus
+  participant G as Grafana
 
-  C->>GW: HTTP /api/...
-  GW->>GW: RequestMetricsMiddleware Record
-  GW->>GW: ProxyErrorHandling on 502/500
-  GW->>D: YARP forward
-  D->>D: UseExceptionHandler
-  D->>D: UseLogContext Push TraceId
-  D->>S: UseSerilogRequestLogging
-  D->>O: AspNetCore instrumentation span
-  D->>D: Auth / Tenant / endpoint
-  alt unhandled exception
-    D->>S: GlobalExceptionHandler LogError
-    D-->>C: ProblemDetails + requestId
-  end
+  UI->>GW: HTTP
+  GW->>D: YARP
+  D->>D: AspNetCore span + Serilog
+  D->>A: OTLP traces (و در آینده metrics/logs)
+  A->>T: export traces
+  A->>L: export logs
+  A->>P: remote_write metrics
+  G->>T: Explore TraceQL
+  G->>L: Explore LogQL
+  G->>P: Explore PromQL
 ```
 
-وضعیت ترتیب middleware از `Program.cs`: `verified`. اینکه span به Jaeger برسد وقتی سرویس comment است: عملاً exporter ممکن است به endpoint مرده بزند — `runtime verification pending` / strong inference از Compose comment.
+وضعیت امروز: فقط فلش‌های Compose و tracing-only دژبان از کد تأیید شده‌اند؛ بقیه هدف طراحی است.
 
-## 10. پیکربندی و محیط
+## 9. سناریوهای شکست مرتبط با استک جدید
 
-| کلید / موضوع | محل | مصرف | وضعیت |
-|---|---|---|---|
-| `Serilog` section | GlobalAppsettings + Properties در appsettings سرویس | `ReadFrom.Configuration` | verified |
-| Override Outbox/Inbox Warning | GlobalAppsettings | کاهش نویز job | verified |
-| Filter `commandText` | Program.cs چند سرویس | حذف لاگ SQL outbox جداول | verified |
-| Seq `serverUrl` | WriteTo Seq | نیاز به Seq در حال اجرا | config verified؛ سرویس Compose comment |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | GlobalAppsettings | مقصد OTLP دژبان | کلید verified؛ collector فعال نیست در Compose خوانده‌شده |
-| File sink | Using بدون WriteTo File | اثر نوشتن فایل از این JSON قطعی نیست | inferred: ممکن است غیرفعال باشد مگر جای دیگر |
+1. **Alloy پایین، Dejban Development با OTLP به localhost:4317:** exporter ممکن است fail/retry کند؛ UI Tempo خالی می‌ماند.
+2. **اپ Docker با `http://jaeger:4317`:** DNS/اتصال به سرویس ناموجود.
+3. **فقط Grafana باز شده بدون datasource:** داشبورد خالی حتی اگر Tempo پر باشد.
+4. **Seq خاموش و Serilog WriteTo Seq:** لاگ Console هست؛ مقصد Seq نیست؛ Loki هم پر نمی‌شود.
+5. **Tempo خالی چون هیچ درخواستی به Dejban نخورده یا instrumentation قبل از اولین request span ندارد.**
+6. **انتظار متریک HTTP در Prometheus بدون `WithMetrics`:** فقط متریک‌های خود Prometheus دیده می‌شود.
 
-## 11. آنچه نیست / محدودیت
+## 10. ده سؤال مصاحبه
 
-| مورد | شاهد |
-|---|---|
-| Seq/Jaeger در Compose فعال | بلوک comment در `docker-compose.development.yml` |
-| OTEL روی gateway/هویت | نبود `AddOpenTelemetry` در جستجوی آن hostها |
-| Metrics OTEL | نبود `WithMetrics` در بلوک دژبان |
-| Correlation ID سفارشی بین سرویس‌ها فراتر از W3C/Activity | فقط PushProperty TraceId در دژبان تأیید شد |
-| Health همگانی همهٔ microserviceها | فقط دژبان (+ endpoint پیکربندی reporting در gateway) |
-| `HealthChecks.Uris` | پکیج بدون call site در دژبان |
-| متریک gateway پایدار بین replicaها | حافظهٔ پردازه |
+### 1. فرق OpenTelemetry با Grafana چیست؟
 
-## 12. سناریوهای شکست (بر اساس کد)
+OpenTelemetry استاندارد و SDK جمع‌آوری است. Grafana UI مشاهده است. داده باید از SDK به collector (اینجا Alloy) و بعد به Loki/Tempo/Prometheus برسد تا Grafana چیزی نشان دهد.
 
-1. **Postgres دژبان پایین:** health `/health` Unhealthy؛ درخواست‌های داده fail؛ exception handler لاگ می‌کند.  
-2. **Redis پایین:** health Redis fail؛ اثر blacklist/cache در درس 19 (fail-open revoke).  
-3. **Downstream 502 از YARP:** ProxyErrorHandling پیام سیستم را لاگ و به کلاینت برمی‌گرداند.  
-4. **Seq خاموش، Serilog WriteTo Seq:** رفتار sink (buffer/error) بدون اجرا قطعی نیست → runtime pending؛ Console همچنان در WriteTo هست.  
-5. **Jaeger خاموش، OTLP روشن:** exporter ممکن است خطا/retry کند؛ تأثیر روی request path معمولاً جدا از business است ولی تأیید نشد.  
-6. **Unhandled در دژبان Production-like:** 500 بدون Detail پیام؛ با LogError.  
-7. **فشار یک endpoint:** `/api/v1/gateway/request-metrics` (با auth) میانگین/خطا را نشان می‌دهد تا restart.
+**Follow-up:** Alloy کجای این مخزن است؟  
+سرویس Compose و فایل `Observability/alloy/config.alloy`.
 
-## 13. ده سؤال مصاحبه
+### 2. الان کدام سرویس واقعاً OTEL می‌فرستد؟
 
-### 1. Observability در این مخزن از چه اجزایی تشکیل شده؟
+از روی کد، فقط مسیر دژبان در `InfrastructureConfiguration`. بقیه microserviceها در این فاز `AddOpenTelemetry` ندارند.
 
-عمدتاً Serilog، health دژبان، tracing OTEL فقط دژبان، و متریک in-process gateway — نه یک APM یکپارچه برای همهٔ سرویس‌ها.
+### 3. چرا Loki ممکن است خالی باشد در حالی که Serilog کار می‌کند؟
 
-**Follow-up:** Seq کجاست؟  
-در config WriteTo؛ کانتینر در Compose توسعه comment است.
+چون Serilog به Console/Seq می‌نویسد، نه به OTLP logs یا push مستقیم Loki. Alloy فقط چیزی را که OTLP log بگیرد به Loki می‌دهد.
 
-### 2. چرا لاگ outbox را فیلتر می‌کنند؟
+### 4. `OTEL_EXPORTER_OTLP_ENDPOINT` در Development به کجا می‌خورد؟
 
-Jobهای پرتکرار SQL/commandText تولید می‌کنند؛ Override Warning + ByExcluding روی OutboxMessage/InboxState نویز Information را کم می‌کند.
+`http://localhost:4317` که با publish پورت Alloy در `docker-compose.development.yml` هم‌خوان است.
 
-### 3. `UseSerilogRequestLogging` چه می‌کند؟
+**Follow-up:** در DockerDevelopment؟  
+هنوز `http://jaeger:4317` در JSON است؛ با استک جدید ناسازگار است مگر عوض شود.
 
-یک خلاصهٔ درخواست HTTP (مسیر، وضعیت، زمان) را با Serilog می‌نویسد؛ مکمل لاگ‌های دستی handlerهاست.
+### 5. Prometheus در این Compose چطور متریک اپ را می‌گیرد؟
 
-### 4. TraceId چطور به لاگ دژبان می‌رسد؟
+Remote write receiver روشن است و Alloy به `/api/v1/write` می‌نویسد. Scrape فعلی فقط خود Prometheus است. بدون metrics از اپ، remote write عملاً خالی از متریک business می‌ماند.
 
-Middleware از `Activity.Current?.TraceId` می‌خواند و به `LogContext` می‌فرستد تا Enrich FromLogContext آن را در رویدادها ببیند.
+### 6. Tempo چه چیزی ذخیره می‌کند؟
 
-**Follow-up:** آیا همهٔ سرویس‌ها همین middleware را دارند؟  
-در مسیر خوانده‌شده فقط دژبان.
+Traceهای OTLP که Alloy به `tempo:4317` forward کند. در probe این جلسه search خالی بود.
 
-### 5. OpenTelemetry اینجا چه instrument می‌کند؟
+### 7. متریک gateway با Prometheus چه فرقی دارد؟
 
-ASP.NET Core، HttpClient، EF، Redis، Npgsql، و source MassTransit؛ خروجی OTLP.
+`RequestMetricsStore` شمارنده در حافظهٔ همان پردازه است و از API JSON خوانده می‌شود؛ exporter/`WithMetrics` نیست.
 
-**Follow-up:** Metrics؟  
-در همان بلوک `WithMetrics` نیست.
+### 8. برای دیدن تریس در Grafana حداقل چه چیزهایی لازم است؟
 
-### 6. چرا ممکن است تریس در UI نبینید؟
+Dejban در حال اجرا با OTLP به Alloy، Alloy و Tempo healthy، حداقل یک درخواست HTTP که span بسازد، و datasource Tempo در Grafana.
 
-Jaeger/collector در Compose فعلی comment است؛ فقط ثبت exporter در کد کافی برای مشاهدهٔ UI نیست.
+### 9. فیلتر outbox در Serilog چه مشکلی را حل می‌کند؟
 
-### 7. Health check دژبان چه چیزهایی را می‌سنجد؟
+نویز Information از SQL/commandText جداول Outbox/Inbox را کم می‌کند تا لاگ مفید دفن نشود.
 
-اتصال پیکربندی‌شدهٔ Postgres و Redis؛ پاسخ با UI writer روی مسیر `health`.
+### 10. چرا داشتن Compose برای LGTM به‌تنهایی یعنی «observability کامل» نیست؟
 
-### 8. متریک gateway با Prometheus چه فرقی دارد؟
+چون بدون instrumentation همگانی، بدون ارسال لاگ/متریک، و بدون datasource Grafana، فقط جعبه‌های خالی بالا آمده‌اند. این مخزن الان در همان مرحلهٔ میانی است.
 
-شمارنده/میانگین در حافظهٔ همان پردازه است و از endpoint JSON خوانده می‌شود؛ scrape/exporter استاندارد Prometheus در این کد نیست.
+## 11. چک‌لیست تکمیل
 
-### 9. Gateway چطور خطای پروکسی را قابل‌مشاهده می‌کند؟
+- [x] `OTEL_EXPORTER_OTLP_ENDPOINT` در Docker* → `http://alloy:4317`
+- [x] `WithMetrics` + `UseOtlpExporter` در Infra دژبان و helper مشترک
+- [x] Serilog → OTLP با `Serilog.Sinks.OpenTelemetry` (`WriteToObservabilityOtlp`)
+- [x] `AddObservabilityTelemetry` روی Gateway، Identity، ACL، DCC، RequestTracker، GateServer، Reporting، Baskool (+ tracing غنی دژبان)
+- [x] Provision datasource در `Observability/grafana/provisioning` و mount در Compose
+- [ ] smoke test دستی بعد از F5: درخواست واقعی → Tempo Explore / Loki `{service_name="Dejban.Api"}`
 
-`ProxyErrorHandlingMiddleware` وضعیت 502/500 را می‌بیند، cluster را نام‌گذاری می‌کند، لاگ Warning می‌زند و پاسخ/redirect مناسب می‌دهد.
+## 12. خلاصه مرور
 
-### 10. یک مسیر واقعی را شرح دهید
+- [ ] می‌دانم استک Compose (Alloy/Loki/Tempo/Prometheus/Grafana) اضافه و در development پورت دارد.
+- [ ] می‌دانم tracing OTEL فقط در Infra دژبان ثبت شده و metrics OTEL نیست.
+- [ ] می‌دانم Serilog هنوز به Seq می‌رود نه Loki.
+- [ ] می‌دانم Docker OTEL هنوز به `jaeger` اشاره می‌کند.
+- [ ] می‌دانم Grafana بدون datasource provision در repo است.
+- [ ] می‌توانم بگویم چرا Tempo/Explore خالی دیده می‌شود حتی وقتی کانتینرها Up هستند.
 
-درخواست پرسنل از UI → gateway (metrics + در صورت 502 پیام سیستم) → دژبان (exception handler، TraceId در context، Serilog request log، span OTEL) → در خطا ProblemDetails با requestId.
+## 13. منابع
 
-**Follow-up:** requestId همان TraceId است؟  
-در ProblemDetails از `TraceIdentifier` ASP.NET است؛ TraceId اکتیویتی جدا در LogContext است — لزوماً یک رشته نیستند.
-
-## 14. خلاصه و چک‌لیست
-
-- [ ] می‌دانم Serilog از GlobalAppsettings خوانده می‌شود و outbox نویزگیری دارد.  
-- [ ] می‌دانم OTEL tracing فقط در Infra دژبان ثبت شده و Compose Jaeger comment است.  
-- [ ] فرق health دژبان و متریک in-process gateway را بلدم.  
-- [ ] می‌دانم gateway Serilog ندارد.  
-- [ ] محدودیت نبود collector و نبود metrics OTEL را می‌توانم بگویم.
-
-## 15. منابع
-
-- `Microservices/Dejban/API/Dejban.Api/Program.cs`  
-- `Microservices/Dejban/API/Dejban.Api/Middleware/{LogContextTraceLoggingMiddleware,GlobalExceptionHandler,MiddlewareExtensions}.cs`  
-- `Microservices/Dejban/API/Dejban.Api/OpenTelemetry/DiagnosticsConfig.cs`  
-- `Microservices/Dejban/Common/Dejban.Common.Infrastructure/InfrastructureConfiguration.cs` — `AddOpenTelemetry`  
-- `Microservices/Dejban/Common/Dejban.Common.Infrastructure/Dejban.Common.Infrastructure.csproj`  
-- `GlobalAppsettings/globalAppsettings*.json` — Serilog، `OTEL_EXPORTER_OTLP_ENDPOINT`  
-- `ApiGateway/Program.cs`، `Middleware/{RequestMetricsMiddleware,RequestMetricsStore,ProxyErrorHandlingMiddleware}.cs`  
-- `Microservices/IdentityServer/Program.cs` (نمونه Serilog + filter + RequestLogging)  
-- `Microservices/DCC/Abstractions/Exceptions/GlobalExceptionHandler.cs` (نمونه ساده‌تر)  
-- `docker-compose.development.yml` — بلوک‌های comment Seq/Jaeger  
-- `Directory.Packages.props`  
+- `Observability/alloy/config.alloy`
+- `Observability/loki/loki-config.yaml`
+- `Observability/tempo/tempo.yaml`
+- `Observability/prometheus/prometheus.yml`
+- `docker-compose.yml` — سرویس‌ها و volumeهای observability
+- `docker-compose.development.yml` — پورت‌ها؛ Seq/Jaeger comment
+- `GlobalAppsettings/globalAppsettings*.json` — Serilog و `OTEL_EXPORTER_OTLP_ENDPOINT`
+- `Microservices/Dejban/Common/Dejban.Common.Infrastructure/InfrastructureConfiguration.cs`
+- `Microservices/Dejban/API/Dejban.Api/OpenTelemetry/DiagnosticsConfig.cs`
+- `Microservices/Dejban/API/Dejban.Api/Program.cs` — health، Serilog
+- `ApiGateway/Middleware/RequestMetricsMiddleware.cs`، `RequestMetricsStore.cs`، `ProxyErrorHandlingMiddleware.cs`
+- `Directory.Packages.props` — نسخه‌های OpenTelemetry و Serilog
 - درس‌های `03-docker-compose.md`، `04-yarp.md`، `19-redis.md`

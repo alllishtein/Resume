@@ -69,7 +69,7 @@
 | `17-reporting` | `17-reporting.md` | **Skipped / Out of Scope** — Reporting خارج از محدودهٔ یادگیری | — | — |
 | `18-mediamtx-baskool` | `18-mediamtx-baskool.md` | **Skipped / Out of Scope** — Baskool و MediaMTX اختصاصی | — | — |
 | `19-redis` | `19-redis.md` | Redis؛ HybridCache 10؛ blacklist توکن؛ fallback Memory؛ health دژبان | 03، 05 | `AddCacheServices`، `TokenBlackListService`، `UseTokenRevoke`، Compose `redis` |
-| `20-observability` | `20-observability.md` | Serilog+فیلتر outbox؛ OTEL tracing فقط دژبان؛ health؛ متریک in-process gateway؛ Seq/Jaeger comment | 01، 03، 19 | `UseSerilog`، `AddOpenTelemetry`، `RequestMetricsMiddleware`، GlobalAppsettings |
+| `20-observability` | `20-observability.md` | Serilog+فیلتر outbox؛ OTEL tracing فقط دژبان؛ استک Compose Alloy/Loki/Tempo/Prometheus/Grafana؛ شکاف metrics/logs/datasource؛ Seq/Jaeger comment | 01، 03، 19 | `UseSerilog`، `AddOpenTelemetry`، `Observability/*`، `RequestMetricsMiddleware`، GlobalAppsettings |
 | `21-postgres-dr` | `21-postgres-dr.md` | هفت Postgres+volume؛ کیت DR standby/promote/PITR؛ backup daemon در tree غایب؛ بدون auto connection failover | 03، 09 | `infrastructure/postgres-dr/*`، `compose.data.yml`، `MigrationExtensions` |
 
 ## فرانت‌اند

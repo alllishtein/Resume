@@ -14,7 +14,7 @@ Context7 در این جلسه در دسترس نبود. رفتار عمومی ho
 
 در این مخزن چند پردازهٔ جدا این کار را می‌کنند. `Dejban.Api`، `IdentityServer` و `ApiGateway` هر سه با `WebApplication.CreateBuilder` بالا می‌آیند، ولی شکل endpoint و ترتیب middlewareشان یکی نیست.
 
-## .NET چیست
+## .NET چیست	
 
 .NET یک پلتفرم اجرای کد مدیریت‌شده است. برنامه به زبان C# نوشته می‌شود، کامپایلر آن را به IL تبدیل می‌کند، و runtime آن IL را اجرا می‌کند. کتابخانهٔ پایه کارهایی مثل فایل، شبکه، زمان، و مجموعه را می‌دهد تا هر پروژه آن‌ها را دوباره نسازد.
 
@@ -42,13 +42,13 @@ middleware تابعی است که `HttpContext` را می‌بیند، کاری 
 
 این مخزن هر سه سبک endpoint را دارد:
 
-| سبک | کجا دیده شد | نماد |
-|---|---|---|
-| Minimal API با کشف نوع | دژبان | `IEndpoint.MapEndpoint` و `MapGet` در `GetPersonnels` |
-| Controller | هویت | `AuthController` و `MapControllers` |
-| Minimal API دستی | gateway | `MapGet("/health/reporting-routes", ...)` و `MapReverseProxy` |
-| MVC با view | `ClientServiceManagement` | `AddControllersWithViews` و `MapControllerRoute` |
-| gRPC | سرورهای دستگاه | `MapGrpcService` |
+| سبک                         | کجا دیده شد        | نماد                                                           |
+| ------------------------------ | --------------------------- | ------------------------------------------------------------------ |
+| Minimal API با کشف نوع | دژبان                  | `IEndpoint.MapEndpoint` و `MapGet` در `GetPersonnels`     |
+| Controller                     | هویت                    | `AuthController` و `MapControllers`                           |
+| Minimal API دستی           | gateway                     | `MapGet("/health/reporting-routes", ...)` و `MapReverseProxy` |
+| MVC با view                  | `ClientServiceManagement` | `AddControllersWithViews` و `MapControllerRoute`              |
+| gRPC                           | سرورهای دستگاه | `MapGrpcService`                                                 |
 
 پس «این سامانه فقط controller است» یا «فقط minimal API است» با کد نمی‌خواند.
 
@@ -269,14 +269,14 @@ Controller هویت همین نقش را با attribute می‌گیرد. `AuthCo
 
 ## رابطه با بقیهٔ فناوری‌های مخزن
 
-| فناوری | رابطه با میزبان |
-|---|---|
-| YARP | یک middleware و endpoint روی همین `WebApplication` در gateway. سند `04-yarp.md` |
-| مسیر login و پرسنل | از همین routing و DI رد می‌شود. سند `30-request-paths.md` |
-| MediatR و FluentValidation | داخل endpoint، بعد از binder. سند `08-cqrs-mediatr.md` |
-| EF Core | `DbContext` scoped و `Migrate` در startup. سند `09-ef-core-postgresql.md` |
-| JWT و Identity | scheme در DI، اجرای scheme در `UseAuthentication`. سند `05-jwt-identity.md` |
-| Tenant | middleware بعد یا قبل از authorization، بسته به پردازه. سند `06-tenancy-authorization.md` |
+| فناوری                       | رابطه با میزبان                                                                                             |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| YARP                               | یک middleware و endpoint روی همین `WebApplication` در gateway. سند `04-yarp.md`                       |
+| مسیر login و پرسنل       | از همین routing و DI رد می‌شود. سند `30-request-paths.md`                                            |
+| MediatR و FluentValidation        | داخل endpoint، بعد از binder. سند `08-cqrs-mediatr.md`                                                    |
+| EF Core                            | `DbContext` scoped و `Migrate` در startup. سند `09-ef-core-postgresql.md`                                    |
+| JWT و Identity                    | scheme در DI، اجرای scheme در `UseAuthentication`. سند `05-jwt-identity.md`                             |
+| Tenant                             | middleware بعد یا قبل از authorization، بسته به پردازه. سند `06-tenancy-authorization.md`    |
 | SignalR، gRPC، Hangfire، Quartz | هر کدام روی همان host سوار می‌شوند، ولی map یا hosted service خودشان را دارند |
 
 ## سؤال‌های مصاحبه

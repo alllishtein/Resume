@@ -62,7 +62,7 @@
 | `17-reporting` | `Skipped` | 2026-10-26. خارج از محدوده به‌درخواست کاربر. فایل درس ساخته نشد. |
 | `18-mediamtx-baskool` | `Skipped` | 2026-10-26. Baskool/MediaMTX خارج از محدوده. فایل درس ساخته نشد. |
 | `19-redis` | `Done` | 2026-10-26. HybridCache 10 + StackExchangeRedis 10؛ blacklist؛ fallback Memory؛ UseTokenRevoke؛ نبود در pipeline دژبان؛ Compose بدون volume چک شد. اتصال زنده unresolved. |
-| `20-observability` | `Done` | 2026-10-26. Serilog 10 + فیلتر outbox؛ OTEL tracing فقط Dejban Infra + OTLP؛ health Npgsql/Redis؛ RequestMetrics in-process؛ Seq/Jaeger comment؛ نبود Serilog روی gateway چک شد. collector زنده unresolved. |
+| `20-observability` | `Done` | 2026-11-01 بازنویسی. استک Compose Alloy/Loki/Tempo/Prometheus/Grafana + فایل‌های `Observability/` و پورت development چک شد؛ کانتینرها Up؛ Tempo search خالی؛ Serilog هنوز Seq؛ OTEL فقط tracing دژبان؛ Docker هنوز `jaeger`؛ Grafana datasource provision نیست. |
 | `21-postgres-dr` | `Done` | 2026-10-26. هفت Postgres+volume؛ کیت `postgres-dr` (prepare/standby/promote/PITR)؛ Redis/MinIO/Rabbit خارج از replicate؛ `backup-daemon.sh`/`backup.sh` در tree نیست؛ failover connection دستی. اجرای زنده unresolved. |
 | `22-turborepo` | `Done` | 2026-10-26. npm workspaces + turbo ^2.10.12؛ `turbo.json`؛ CI `npx turbo run build --concurrency=1`؛ Docker `--filter`؛ تفکیک Next `--turbopack`. Remote cache و hit نرخ unresolved. |
 | `23-nextjs` | `Done` | 2026-10-26. main/dejban/gate/dcc با `next` ^16.2.6؛ App Router؛ بدون middleware/route handler؛ AuthGuard کلاینت؛ staff/login تا apiClient. Runtime pending. |
