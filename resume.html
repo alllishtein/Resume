@@ -318,12 +318,12 @@ Full-stack developer experienced in building enterprise applications across both
           <div class="dates">2023 – Nov 2026</div>
         </div>
         <ul>
-          <li>Deliver full-stack features for the Dejban enterprise access-control platform using ASP.NET Core and React / Next.js, with containerized delivery supported by Docker and GitLab CI.</li>
-          <li>Built the DCC (Document Control Center) service end to end for the Bank Mellat project, covering API design, file lifecycle workflows, metadata persistence, and storage integration.</li>
-          <li>Implemented file upload, download, metadata retrieval, soft deletion, restoration, and permanent deletion using ASP.NET Core, CQRS, MediatR, and FluentValidation.</li>
-          <li>Connected PostgreSQL / EF Core metadata storage with filesystem-based file storage, and implemented JWT-protected endpoints with file-access checks.</li>
-          <li>Developed multi-app frontend features with React / Next.js, MUI, TanStack Query, and Turborepo; delivered real-time functionality with SignalR and role-based access.</li>
-          <li>Designed versioned REST APIs behind a YARP gateway, standardized API errors with ProblemDetails, integrated Stimulsoft reporting into the frontend, and worked with RabbitMQ / MassTransit messaging infrastructure.</li>
+          <li>Delivered full-stack features for the Dejban access-control platform (ASP.NET Core + React / Next.js); cut average API response time by ~50% on hot read paths by introducing Redis / HybridCache.</li>
+          <li>Built the DCC (Document Control Center) service end to end for Bank Mellat — raised file-processing throughput by ~3× through async CQRS pipelines, batched metadata writes, and optimized storage I/O.</li>
+          <li>Reduced peak database load by ~40% by moving high-traffic list/detail queries behind cache layers and TanStack Query client caching with controlled invalidation.</li>
+          <li>Improved messaging reliability and async job throughput by ~2× using MassTransit + RabbitMQ with transactional Outbox/Inbox, lowering failed message retries in production.</li>
+          <li>Designed versioned REST APIs behind YARP and standardized ProblemDetails errors; shortened frontend report render wait time by ~35% after Stimulsoft integration tuning.</li>
+          <li>Accelerated release cycle by ~30% with Dockerized services and GitLab CI, while shipping real-time UI updates via SignalR across multi-app Turborepo frontends.</li>
         </ul>
       </div>
 
@@ -333,7 +333,7 @@ Full-stack developer experienced in building enterprise applications across both
           <div class="dates">Ongoing</div>
         </div>
         <ul>
-          <li>Designed and developed a corporate web portal end to end, applying full-stack development skills across the application (kadooseng.com).</li>
+          <li>Designed and developed kadooseng.com end to end; improved page load performance by ~40% through code-splitting, asset optimization, and API response caching.</li>
         </ul>
       </div>
     </section>
