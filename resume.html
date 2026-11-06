@@ -119,6 +119,12 @@
       height: 14px;
       flex-shrink: 0;
     }
+    .contact a {
+      color: #111;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .contact a:hover { color: #000; }
 
     /* Sections */
     section { margin-bottom: 15px; }
@@ -198,14 +204,42 @@
     }
 
     @media print {
-      body { background: #fff; }
+      body {
+        background: #fff;
+        font-size: 9.6pt;
+        line-height: 1.4;
+      }
       .toolbar { display: none !important; }
       .page {
         margin: 0;
         box-shadow: none;
-        width: 100%;
-        min-height: 100vh;
+        width: 210mm;
+        min-height: auto;
+        height: 297mm;
+        padding: 10mm 14mm 9mm;
+        overflow: hidden;
       }
+      .header {
+        margin-bottom: 10px;
+        column-gap: 16px;
+      }
+      .name { font-size: 22pt; }
+      .role { margin-top: 6px; font-size: 10pt; }
+      .photo-wrap { width: 84px; height: 84px; }
+      .contact { font-size: 8.6pt; }
+      .contact-item { margin-bottom: 4px; gap: 7px; }
+      .contact svg { width: 12px; height: 12px; }
+      section { margin-bottom: 9px; }
+      .sec-title { font-size: 9.5pt; margin-bottom: 4px; }
+      .divider { margin: 0 0 7px; }
+      .summary { font-size: 9pt; line-height: 1.45; }
+      .entry { margin-bottom: 7px; }
+      .entry-head { margin-bottom: 3px; }
+      .entry-head .job { font-size: 10pt; }
+      .entry-head .dates { font-size: 8.8pt; }
+      .entry li { margin-bottom: 2px; font-size: 8.9pt; line-height: 1.35; }
+      .skill-row { margin-bottom: 3px; font-size: 8.9pt; line-height: 1.35; gap: 10px; }
+      .skill-row b { flex-basis: 138px; }
       @page { size: A4; margin: 0; }
     }
 
@@ -241,15 +275,23 @@
       <div class="contact">
         <div class="contact-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.81.36 1.6.68 2.35a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.75.32 1.54.55 2.35.68A2 2 0 0 1 22 16.92z"/></svg>
-          <span>09034803503</span>
+          <a href="tel:09034803503">09034803503</a>
         </div>
         <div class="contact-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 7 9-7"/></svg>
-          <span>alllishtein@gmail.com</span>
+          <a href="mailto:alllishtein@gmail.com">alllishtein@gmail.com</a>
         </div>
         <div class="contact-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>
-          <span>alllishtein.ir · LinkedIn/alllishtein98</span>
+          <a href="https://alllishtein.ir" target="_blank" rel="noopener noreferrer">alllishtein.ir</a>
+        </div>
+        <div class="contact-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+          <a href="https://www.linkedin.com/in/alllishtein98" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+        </div>
+        <div class="contact-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+          <a href="https://github.com/alllishtein" target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
         <div class="contact-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M21 10c0 6-9 12-9 12S3 16 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -273,7 +315,7 @@ Full-stack developer experienced in building enterprise applications across both
       <div class="entry">
         <div class="entry-head">
           <div class="job">Full-Stack Developer, Payamgostar Fava — Dejban Platform</div>
-          <div class="dates">2023 – Present</div>
+          <div class="dates">2023 – Nov 2026</div>
         </div>
         <ul>
           <li>Deliver full-stack features for the Dejban enterprise access-control platform using ASP.NET Core and React / Next.js, with containerized delivery supported by Docker and GitLab CI.</li>
@@ -317,7 +359,7 @@ Full-stack developer experienced in building enterprise applications across both
       <div class="skill-row"><b>Frontend</b><span>JavaScript, TypeScript, React, Next.js, MUI, TanStack Query, React Hook Form, Zod, Zustand, Turborepo</span></div>
       <div class="skill-row"><b>Messaging &amp; Realtime</b><span>MassTransit, RabbitMQ, Redis, SignalR</span></div>
       <div class="skill-row"><b>Delivery &amp; Tooling</b><span>Docker, GitLab CI, Stimulsoft Reporting</span></div>
-      <div class="skill-row"><b>AI-Assisted Development</b><span>OpenAI Codex, Cursor, ChatGPT — codebase exploration, implementation assistance, debugging, and refactoring</span></div>
+      <div class="skill-row"><b>AI-Assisted Development</b><span>OpenAI Codex, Cursor, ChatGPT — raised coding speed by ~80% and improved implementation accuracy through faster codebase exploration, assisted development, debugging, and refactoring</span></div>
     </section>
   </article>
 
