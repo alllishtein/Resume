@@ -119,3 +119,18 @@
 - بخش مرور
 
 زبان سندها فارسی است. شناسه، نام پکیج، و نام نوع‌ها انگلیسی می‌مانند.
+
+## سندهای قابلیت
+
+جدا از 32 درس فناوری. موضوع یک فیچر محصول است، نه یک پکیج.
+
+| شناسه | فایل | موضوع | پیش‌نیاز پیشنهادی | شاهد اصلی |
+|---|---|---|---|---|
+| `feature-daily-protector-weapon-approval` | `feature-daily-protector-weapon-approval.md` | تأیید روزانه حافظ و سلاح روی لوح حفاظت و قفل منابع CIT | 07، 08، 09، 10، `day-17` | `PatrolBoardDayApproval`، `ApprovePatrolBoardDayCommandHandler`، `MissionResourceCatalog`، `guard-board-view.jsx` |
+
+## آمادگی مصاحبه
+
+| فایل | موضوع |
+|---|---|
+| `../interview-dejban-100.md` | صد سؤال فارسی مصاحبه دربارهٔ تجربهٔ دژبان. سؤال‌های ۹۸ تا ۱۰۰ روایت پیاده‌سازی احراز هویت، چندسایتی، و تأیید لوح‌اند. |
+| `../interview-aspnetcore-senior-100.md` | صد سؤال فارسی برای پوزیشن Senior ASP.NET Core. زبان، پایپلاین، API، امنیت، EF، پیام، و سه سؤال طراحی/عملیات در ۹۸ تا ۱۰۰. |

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,7 +10,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     /* همان تمپلیت Canva — نسخه فارسی RTL */
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
       background: #cfcfcf;
@@ -27,6 +32,7 @@
       text-align: left;
       padding: 0 8px;
     }
+
     .toolbar button {
       font: 600 12px Vazirmatn, sans-serif;
       padding: 8px 16px;
@@ -42,7 +48,7 @@
       margin: 0 auto 28px;
       background: #fff;
       padding: 16mm 17mm 14mm;
-      box-shadow: 0 2px 18px rgba(0,0,0,.18);
+      box-shadow: 0 2px 18px rgba(0, 0, 0, .18);
     }
 
     .header {
@@ -53,7 +59,9 @@
       margin-bottom: 20px;
     }
 
-    .name-block { text-align: right; }
+    .name-block {
+      text-align: right;
+    }
 
     .name {
       font-size: 22pt;
@@ -62,7 +70,10 @@
       letter-spacing: 0;
       color: #111;
     }
-    .name .line2 { display: block; }
+
+    .name .line2 {
+      display: block;
+    }
 
     .role {
       margin-top: 8px;
@@ -79,12 +90,14 @@
       background: #e6e6e6;
       flex-shrink: 0;
     }
+
     .photo-wrap img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
+
     .photo-fallback {
       width: 100%;
       height: 100%;
@@ -103,6 +116,7 @@
       font-size: 9.5pt;
       color: #222;
     }
+
     .contact-item {
       display: flex;
       align-items: center;
@@ -110,21 +124,34 @@
       margin-bottom: 7px;
       flex-direction: row;
     }
-    .contact-item:last-child { margin-bottom: 0; }
+
+    .contact-item:last-child {
+      margin-bottom: 0;
+    }
+
     .contact svg {
       width: 13px;
       height: 13px;
       flex-shrink: 0;
     }
+
     .contact a {
       color: #111;
       text-decoration: underline;
       text-underline-offset: 2px;
     }
-    .contact a:hover { color: #000; }
-    .ph { color: #aaa; }
 
-    section { margin-bottom: 16px; }
+    .contact a:hover {
+      color: #000;
+    }
+
+    .ph {
+      color: #aaa;
+    }
+
+    section {
+      margin-bottom: 16px;
+    }
 
     .sec-title {
       font-size: 11pt;
@@ -147,8 +174,13 @@
       text-align: justify;
     }
 
-    .entry { margin-bottom: 11px; }
-    .entry:last-child { margin-bottom: 0; }
+    .entry {
+      margin-bottom: 11px;
+    }
+
+    .entry:last-child {
+      margin-bottom: 0;
+    }
 
     .entry-head {
       display: flex;
@@ -157,11 +189,13 @@
       gap: 16px;
       margin-bottom: 3px;
     }
+
     .entry-head .job {
       font-weight: 700;
       font-size: 10.5pt;
       color: #111;
     }
+
     .entry-head .dates {
       font-size: 9.5pt;
       font-weight: 500;
@@ -174,6 +208,7 @@
       padding-right: 18px;
       padding-left: 0;
     }
+
     .entry li {
       margin-bottom: 3px;
       font-size: 10pt;
@@ -188,6 +223,7 @@
       list-style: none;
       padding: 0;
     }
+
     .skills li {
       position: relative;
       padding-right: 14px;
@@ -196,6 +232,7 @@
       color: #2a2a2a;
       margin-bottom: 4px;
     }
+
     .skills li::before {
       content: "";
       position: absolute;
@@ -208,25 +245,50 @@
     }
 
     @media print {
-      body { background: #fff; }
-      .toolbar { display: none !important; }
+      body {
+        background: #fff;
+      }
+
+      .toolbar {
+        display: none !important;
+      }
+
       .page {
         margin: 0;
         box-shadow: none;
         width: 100%;
         min-height: 100vh;
       }
-      @page { size: A4; margin: 0; }
+
+      @page {
+        size: A4;
+        margin: 0;
+      }
     }
 
     @media (max-width: 800px) {
-      .page { width: 100%; padding: 28px 22px; min-height: auto; }
-      .header { grid-template-columns: 1fr; row-gap: 14px; }
-      .contact { justify-self: start; }
-      .skills { grid-template-columns: 1fr 1fr; }
+      .page {
+        width: 100%;
+        padding: 28px 22px;
+        min-height: auto;
+      }
+
+      .header {
+        grid-template-columns: 1fr;
+        row-gap: 14px;
+      }
+
+      .contact {
+        justify-self: start;
+      }
+
+      .skills {
+        grid-template-columns: 1fr 1fr;
+      }
     }
   </style>
 </head>
+
 <body>
   <div class="toolbar">
     <button type="button" onclick="window.print()">چاپ / PDF</button>
@@ -239,37 +301,57 @@
           علی
           <span class="line2">شفایی</span>
         </h1>
-        <p class="role">توسعه‌دهنده فول‌استک .NET / React</p>
+        <p class="role">مهندس نرم افزار</p>
       </div>
 
       <div class="photo-wrap">
-        <img src="photo.jpg" alt="علی شفایی" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <img src="photo.jpg" alt="علی شفایی"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
         <div class="photo-fallback" style="display:none;">عکس.jpg را اضافه کنید</div>
       </div>
 
       <div class="contact">
         <div class="contact-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.81.36 1.6.68 2.35a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.75.32 1.54.55 2.35.68A2 2 0 0 1 22 16.92z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2">
+            <path
+              d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.81.36 1.6.68 2.35a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.75.32 1.54.55 2.35.68A2 2 0 0 1 22 16.92z" />
+          </svg>
           <a href="tel:09034803503">09034803503</a>
         </div>
         <div class="contact-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 7 9-7"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2">
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <path d="m3 7 9 7 9-7" />
+          </svg>
           <a href="mailto:alllishtein@gmail.com">alllishtein@gmail.com</a>
         </div>
         <div class="contact-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18" />
+          </svg>
           <a href="https://alllishtein.ir" target="_blank" rel="noopener noreferrer">alllishtein.ir</a>
         </div>
         <div class="contact-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2">
+            <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z" />
+            <rect x="2" y="9" width="4" height="12" />
+            <circle cx="4" cy="4" r="2" />
+          </svg>
           <a href="https://www.linkedin.com/in/alllishtein98" target="_blank" rel="noopener noreferrer">LinkedIn</a>
         </div>
         <div class="contact-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2">
+            <path
+              d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+          </svg>
           <a href="https://github.com/alllishtein" target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
         <div class="contact-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M21 10c0 6-9 12-9 12S3 16 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2">
+            <path d="M21 10c0 6-9 12-9 12S3 16 3 10a9 9 0 1 1 18 0z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
           <span>اندیشه، تهران</span>
         </div>
       </div>
@@ -296,11 +378,15 @@
           <div class="dates">۱۴۰۲ – آذر ۱۴۰۵</div>
         </div>
         <ul>
-          <li>توسعه قابلیت‌های فول‌استک پلتفرم دژبان با ASP.NET Core و React / Next.js؛ کاهش حدود ۵۰٪ زمان پاسخ API در مسیرهای پرترافیک با Redis / HybridCache</li>
-          <li>کاهش حدود ۴۰٪ بار پیک دیتابیس با کش سمت سرور و کش کلاینت TanStack Query همراه با invalidation کنترل‌شده</li>
-          <li>افزایش حدود ۲ برابری توان پردازش پیام‌های ناهمگام با MassTransit و RabbitMQ به‌همراه Outbox/Inbox و کاهش retryهای ناموفق</li>
-          <li>طراحی APIهای نسخه‌بندی‌شده پشت YARP و استانداردسازی خطا با ProblemDetails؛ کاهش حدود ۳۵٪ زمان انتظار رندر گزارش پس از بهینه‌سازی Stimulsoft</li>
-          <li>تسریع حدود ۳۰٪ چرخه انتشار با Docker و GitLab CI و ارائه به‌روزرسانی بلادرنگ UI با SignalR در فرانت چنداپلیکیشنی Turborepo</li>
+          <li>توسعه جریان‌های پرسنل، مهمان، خودرو و تیکت در دژبان به‌صورت فول‌استک: ماژول‌های ASP.NET Core در بک‌اند و
+            صفحات React / Next.js در Turborepo</li>
+          <li>بهبود پاسخ‌دهی APIهای پرترافیک با Redis / HybridCache روی کوئری‌های لیست و جزئیات، و هم‌تراز کردن
+            invalidation در TanStack Query سمت کلاینت</li>
+          <li>بهبود تحویل پیام‌های ناهمگام با MassTransit، RabbitMQ و Outbox/Inbox تراکنشی تا رویداد دامنه یک‌بار منتشر
+            و به‌صورت idempotent مصرف شود</li>
+          <li>طراحی APIهای نسخه‌بندی‌شده پشت YARP با قرارداد خطای ProblemDetails؛ بهبود گزارش‌های Stimulsoft (تاریخ
+            شمسی، ستون‌های جدول و عبور فیلتر از صفحه لیست)</li>
+          <li>بهبود روند انتشار با Docker و GitLab CI و ارائه به‌روزرسانی زنده UI با SignalR در چند اپ فرانت</li>
         </ul>
       </div>
 
@@ -310,10 +396,13 @@
           <div class="dates">پروژه سازمانی</div>
         </div>
         <ul>
-          <li>طراحی و توسعه سرویس DCC برای بانک ملت؛ افزایش حدود ۳ برابری توان پردازش فایل با پایپ‌لاین async مبتنی بر CQRS، نوشتن دسته‌ای فراداده و بهینه‌سازی I/O ذخیره‌سازی</li>
-          <li>پیاده‌سازی آپلود، دانلود، حذف نرم، بازیابی و حذف دائمی از طریق REST API با اعتبارسنجی FluentValidation</li>
-          <li>ذخیره فراداده در PostgreSQL با EF Core و ذخیره‌سازی فایل از طریق IFileStorage به‌همراه JWT و کنترل دسترسی</li>
-          <li>یکپارچه‌سازی با سرویس‌های دیگر از طریق HTTP و زیرساخت MassTransit Outbox/Inbox برای تحویل مطمئن‌تر رویدادها</li>
+          <li>طراحی و توسعه سرویس DCC برای بانک ملت: آپلود، دانلود، حذف نرم، بازیابی و حذف دائمی از طریق REST، با
+            FluentValidation و فراداده در PostgreSQL با EF Core</li>
+          <li>بهبود پردازش فایل با پایپ‌لاین async مبتنی بر CQRS، نوشتن دسته‌ای فراداده و کاهش I/O غیرضروری ذخیره‌سازی
+          </li>
+          <li>جدا کردن ذخیره فایل پشت IFileStorage به‌همراه JWT و کنترل دسترسی روی عملیات سند</li>
+          <li>یکپارچه‌سازی با سرویس‌های دیگر از طریق HTTP و Outbox/Inbox در MassTransit برای تحویل قابل‌اتکای رویداد
+          </li>
         </ul>
       </div>
 
@@ -323,7 +412,8 @@
           <div class="dates">فعال</div>
         </div>
         <ul>
-          <li>طراحی و توسعه end-to-end پرتال kadooseng.com؛ بهبود حدود ۴۰٪ سرعت لود صفحه با code-splitting، بهینه‌سازی asset و کش پاسخ API</li>
+          <li>طراحی و توسعه end-to-end پرتال kadooseng.com و بهبود لود صفحه با code-splitting، بهینه‌سازی asset و کش
+            پاسخ API</li>
         </ul>
       </div>
     </section>
@@ -357,8 +447,8 @@
         <li>RHF / Zod / Zustand</li>
         <li>MUI / Turborepo</li>
         <li>Docker / GitLab CI</li>
-        <li>ابزارهای توسعه مبتنی بر هوش مصنوعی: OpenAI Codex، Cursor و ChatGPT</li>
-        <li>افزایش حدود ۸۰٪ سرعت کدنویسی و بهبود دقت پیاده‌سازی با کمک AI در بررسی کدبیس، توسعه، دیباگ و بازآرایی کد</li>
+        <li>ابزارهای کمکی توسعه: OpenAI Codex، Cursor و ChatGPT برای بررسی کدبیس، دیباگ و بازآرایی در کنار بازبینی
+          مهندسی</li>
       </ul>
     </section>
   </article>
@@ -379,4 +469,5 @@
     })();
   </script>
 </body>
+
 </html>
